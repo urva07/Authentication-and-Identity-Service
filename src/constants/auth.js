@@ -1,0 +1,8 @@
+const TOKEN_EXPIRY_SECONDS = 60 * 60;
+
+module.exports = {
+    AUTH_COOKIE_NAME: 'auth_token',
+    REFRESH_TOKEN_COOKIE_NAME: 'refresh_token',
+    TOKEN_EXPIRY_SECONDS,
+    TOKEN_EXPIRY_MILLISECONDS: TOKEN_EXPIRY_SECONDS * 1000
+};
