@@ -137,6 +137,7 @@ const shutdown = async (signal) => {
         () => connections?.mysql?.close(),
         () => connections?.redis?.quit()
     ];
+
     const closeResults = await Promise.allSettled(
         closeConnections.map(async (closeConnection) => closeConnection())
     );

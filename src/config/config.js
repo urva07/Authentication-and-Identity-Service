@@ -55,7 +55,12 @@ module.exports = {
     },
     auth: {
         jwtSecret: process.env.JWT_SECRET,
-        signinTokenSecret: process.env.SIGNIN_TOKEN_SECRET
+        signinTokenSecret: process.env.SIGNIN_TOKEN_SECRET,
+        jwtRefreshTokenExpiration: process.env.JWT_REFRESH_TOKEN_EXPIRATION || '7d',
+        jwtAccessTokenExpiration: process.env.JWT_ACCESS_TOKEN_EXPIRATION || '24h',
+        jwtRefreshTokenSecret: process.env.JWT_REFRESH_TOKEN_SECRET,
+        jwtAccessTokenSecret: process.env.JWT_ACCESS_TOKEN_SECRET,
+        jwtAlgorithm: process.env.JWT_ALGORITHM || 'HS256'
     },
     oidc: {
         google: {

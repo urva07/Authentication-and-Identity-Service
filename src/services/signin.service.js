@@ -1,5 +1,7 @@
 const bcrypt = require('bcryptjs');
 const { createCipheriv, createHash, randomBytes } = require('node:crypto');
+const path = require('node:path');
+const ejs = require('ejs');
 const config = require('../config/config');
 const { AppError, ConflictError } = require('../errors');
 const { getUserRepository } = require('../repositories');
@@ -84,14 +86,6 @@ const createSigninService = ({
         return verificationUrl.toString();
     };
 
-    const escapeHtml = (value) => value.replace(/[&<>"']/g, (character) => ({
-        '&': '&amp;',
-        '<': '&lt;',
-        '>': '&gt;',
-        '"': '&quot;',
-        "'": '&#39;'
-    })[character]);
-
     const getEmailService = () => {
         if (emailService) {
             return emailService;
@@ -125,6 +119,11 @@ const createSigninService = ({
         );
 
         const verificationUrl = createVerificationUrl(verificationToken);
+        const html = await ejs.renderFile(
+            path.join(__dirname, '../views/passwordResetEmail.ejs'),
+            { name, verificationUrl }
+        );
+
         await getEmailService().sendEmail({
             to: normalizedEmail,
             subject: 'Verify your email address',
@@ -136,19 +135,13 @@ const createSigninService = ({
                 '',
                 'This link expires in 24 hours. If you did not request this, you can ignore this email.'
             ].join('\n'),
-            html: [
-                '<!doctype html>',
-                '<html lang="en"><body>',
-                `<p>Hello ${escapeHtml(name)},</p>`,
-                '<p>Verify your email address using the link below. This link expires in 24 hours.</p>',
-                `<p><a href="${escapeHtml(verificationUrl)}">Verify email address</a></p>`,
-                `<p>If the link does not work, copy and paste this URL:</p><p>${escapeHtml(verificationUrl)}</p>`,
-                '<p>If you did not request this, you can ignore this email.</p>',
-                '</body></html>'
-            ].join('')
+            html
         });
 
-        return { success: true };
+        return { 
+            success: true, 
+            message: "A verification link has been sent to your email. Please verify your email to continue."
+        };
     };
 
     return { signin };

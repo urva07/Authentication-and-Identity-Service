@@ -1,11 +1,11 @@
 const passport = require('passport');
 const GoogleStrategy = require("passport-google-oidc");
-// want jwt startegy and basic username and password strategy
 const {Strategy: JwtStrategy, ExtractJwt} = require('passport-jwt');
 const LocalStrategy = require('passport-local').Strategy;
 const config = require('./config');
 const { getUserRepository, getIdentityProviderRepository } = require('#src/repositories/index.js');
 const { generateUUID } = require('#src/utils/userIdGenerator.js');
+const { generateJWTtoken } = require('#src/utils/jwt.js');
 
 
 const initializePassport = () => {
@@ -21,38 +21,31 @@ const initializePassport = () => {
             }, 
             async (issuer, profile, done) => {
                 try {
-                    // Here you can handle the user profile and perform any necessary actions
-                    // For example, you can check if the user exists in your database and create a new user if not    
-                    // please write the code for me copilot
-
                     const identityProviderRepository = getIdentityProviderRepository();
-
                     const existingUser = await identityProviderRepository.findByProviderIdentity('google', profile.id);
 
+                    const user = {
+                        id: existingUser ? existingUser.userId : generateUUID(),
+                        firstName: profile.name.givenName,
+                        lastName: profile.name.familyName,
+                        email: profile.emails[0].value,
+                    }
+
                     if (!existingUser) {
-                        // Create a new user in users table and its corresponding record in identity_providers table in a single transaction
-                        // Create an appliction specific unique user id for the user's table record and use it for the identity_providers table record
-                    
                         const userRepository = getUserRepository();
+
                         const sequelize = config.runtime.db_connections.mysql;
-                        const newUserId = generateUUID(); // Implement this function to generate a unique user ID
-                        // create a transaction to insert into both users and identity_providers tables
                         const t = await sequelize.transaction();
 
                         try {
-                            const newUser = await userRepository.create(
-                                {
-                                    id: newUserId,
-                                    firstName: profile.name.givenName,
-                                    lastName: profile.name.familyName,
-                                    email: profile.emails[0].value,
-                                },
+                            await userRepository.create(
+                                user,
                                 { transaction: t }
                             );
 
                             await identityProviderRepository.create(
                                 {
-                                    userId: newUserId,
+                                    userId: user.id,
                                     provider: 'google',
                                     providerUserId: profile.id,
                                 },
@@ -60,22 +53,13 @@ const initializePassport = () => {
                             );
 
                             await t.commit();
-
                         } catch (error) {
                             await t.rollback();
-                            throw error;
+                            return done(error);
                         }
-
                     }            
                     
-                    const user = {
-                        id: profile.id,
-                        displayName: profile.displayName,
-                        emails: profile.emails,
-                    };
-                    
                     return done(null, user);
-                    
                 } catch (error) {
                     return done(error);
                 }
@@ -89,7 +73,7 @@ const initializePassport = () => {
             {
                 jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
                 secretOrKey: config.auth.jwtSecret,
-                algorithms: ["HS256"],
+                algorithms: [config.auth.jwtAlgorithm],
             }, 
             async (payload, done) => {
                 try {

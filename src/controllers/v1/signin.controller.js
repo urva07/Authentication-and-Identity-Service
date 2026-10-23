@@ -1,8 +1,8 @@
 const createSigninController = (signinService) => ({
     post: async (req, res, next) => {
         try {
-            await signinService.signin(req.body);
-            return res.status(200).json({ success: true });
+            const result = await signinService.signin(req.body);
+            return res.status(202).json(result);
         } catch (error) {
             return next(error);
         }
