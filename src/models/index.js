@@ -8,7 +8,7 @@ const initializeModels = (sequelize) => {
     const IdentityProvider = defineIdentityProvider(sequelize);
 
     User.hasOne(UserPassword, {
-        as: 'passwordCredential',
+        as: 'password',
         foreignKey: 'userId'
     });
     UserPassword.belongsTo(User, {

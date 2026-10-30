@@ -4,5 +4,6 @@ module.exports = {
     ConflictError: require('./ConflictError'),
     ExternalServiceTimeoutError: require('./ExternalServiceTimeoutError'),
     NotFoundError: require('./NotFoundError'),
-    ValidationError: require('./ValidationError')
+    ValidationError: require('./ValidationError'),
+    PayloadTooLargeError: require('./PayloadTooLargeError')
 };

@@ -1,4 +1,4 @@
-const createLoginController = require('../../../src/controllers/login.controller');
+const createLoginController = require('#src/controllers/v1/login.controller.js');
 
 describe('login controller', () => {
     test('passes validated credentials to the service and returns its result', async () => {

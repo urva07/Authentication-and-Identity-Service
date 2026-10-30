@@ -1,4 +1,4 @@
-const createVerifyController = require('../../../src/controllers/verify.controller');
+const createVerifyController = require('#src/controllers/v1/verify.controller.js');
 
 describe('verify controller', () => {
     test('passes the authenticated identity to the service and returns its result', async () => {

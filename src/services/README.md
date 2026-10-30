@@ -29,7 +29,7 @@ cookies are cleared by the controller; without server-side token persistence,
 logout does not revoke previously issued JWTs.
 
 `email.service.js` creates a `sendEmail` service using the SMTP transport from
-`config/mail.js`. Configure `EMAIL_HOST` and `EMAIL_FROM`; `EMAIL_PORT` defaults
+`integrations/mailClient.js`. Configure `EMAIL_HOST` and `EMAIL_FROM`; `EMAIL_PORT` defaults
 to `587`, and optional SMTP authentication requires both `EMAIL_USER` and
 `EMAIL_PASSWORD`.
 

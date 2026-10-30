@@ -1,7 +1,9 @@
 const pino = require('pino');
 
 const logger = pino(
-    {},
+    { 
+        level: 'debug' 
+    },
     pino.transport({
         target: 'pino-pretty',
         options: { 

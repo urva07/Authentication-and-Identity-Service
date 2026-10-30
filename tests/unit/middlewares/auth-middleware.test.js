@@ -5,14 +5,14 @@ const authenticate = require('../../../src/middlewares/auth.middleware');
 
 describe('authentication middleware', () => {
     const jwtSecret = 'test-secret-with-enough-entropy-for-signing';
-    const originalJwtSecret = config.auth.jwtSecret;
+    const originalJwtSecret = config.auth.jwt.jwtAccessTokenSecret;
 
     beforeEach(() => {
-        config.auth.jwtSecret = jwtSecret;
+        config.auth.jwt.jwtAccessTokenSecret = jwtSecret;
     });
 
     afterAll(() => {
-        config.auth.jwtSecret = originalJwtSecret;
+        config.auth.jwt.jwtAccessTokenSecret = originalJwtSecret;
     });
 
     test('accepts a valid auth cookie when configured for cookie authentication', () => {
@@ -93,9 +93,9 @@ describe('authentication middleware', () => {
     });
 
     test('reports missing JWT configuration as an authentication error', () => {
-        config.auth.jwtSecret = undefined;
-        const next = jest.fn();
         const token = jwt.sign({ sub: '42' }, jwtSecret);
+        config.auth.jwt.jwtAccessTokenSecret = undefined;
+        const next = jest.fn();
 
         authenticate('cookie')(
             { cookies: { auth_token: token } },

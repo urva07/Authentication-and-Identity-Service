@@ -3,7 +3,7 @@ jest.mock('nodemailer', () => ({
 }));
 
 const nodemailer = require('nodemailer');
-const createMailClient = require('../../../src/config/mail');
+const createMailClient = require('../../../src/integrations/mailClient');
 
 describe('mail configuration', () => {
     beforeEach(() => {

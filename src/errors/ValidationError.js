@@ -1,12 +1,12 @@
 const AppError = require('./AppError');
 
 class ValidationError extends AppError {
-    constructor(zodError) {
+    constructor(zodError, statusCode = 400) {
         if (!zodError || !Array.isArray(zodError.issues)) {
             throw new TypeError('ValidationError requires a ZodError');
         }
 
-        super('Validation failed', 400);
+        super('Validation failed', statusCode);
 
         this.name = 'ValidationError';
         this.cause = zodError;

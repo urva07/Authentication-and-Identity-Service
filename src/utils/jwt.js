@@ -1,4 +1,5 @@
 const jwt = require("jsonwebtoken");
+const config = require('#src/config/config.js');
 
 const generateJWTtoken = ({ 
     payload, 
@@ -17,7 +18,25 @@ const verifyJWTtoken = ({
     return jwt.verify(token, secret);
 };
 
+const generateAccessToken = (userId) => {
+    return generateJWTtoken({
+        payload: { sub: String(userId) },
+        expiry: config.auth.jwt.jwtAccessTokenExpiration,
+        secret: config.auth.jwt.jwtAccessTokenSecret
+    });
+};
+
+const generateRefreshToken = (userId) => {
+    return generateJWTtoken({
+        payload: { sub: String(userId) },
+        expiry: config.auth.jwt.jwtRefreshTokenExpiration,
+        secret: config.auth.jwt.jwtRefreshTokenSecret
+    });
+};
+
 module.exports = {
     generateJWTtoken,
     verifyJWTtoken,
+    generateAccessToken,
+    generateRefreshToken
 };

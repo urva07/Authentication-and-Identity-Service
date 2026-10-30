@@ -5,8 +5,8 @@ const defineUser = (sequelize) =>
         'User',
         {
             id: {
-                type: DataTypes.BIGINT.UNSIGNED,
-                autoIncrement: true,
+                type: DataTypes.UUID,
+                defaultValue: DataTypes.UUIDV4,
                 primaryKey: true
             },
             email: {

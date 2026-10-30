@@ -7,6 +7,7 @@ const abortSignalMiddleware = (req, res, next) => {
 
     const abortForClientDisconnect = () => {
         if (!controller.signal.aborted) {
+            console.debug('[abort-signal] Client disconnected; aborting request');
             controller.abort(new Error('Client disconnected'));
         }
         cleanup();
@@ -33,6 +34,7 @@ const abortSignalMiddleware = (req, res, next) => {
 
     const timeout = setTimeout(() => {
         if (!controller.signal.aborted) {
+            console.debug('[abort-signal] External service timeout; aborting request');
             controller.abort(new ExternalServiceTimeoutError());
         }
         cleanup();

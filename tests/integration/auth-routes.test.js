@@ -29,22 +29,22 @@ jest.mock('../../src/services', () => ({
 const app = require('../../src/app');
 
 describe('Authentication routes', () => {
-    const originalJwtSecret = config.auth.jwtSecret;
+    const originalJwtSecret = config.auth.jwt.jwtAccessTokenSecret;
     const testJwtSecret = 'test-secret-with-enough-entropy-for-signing';
 
     beforeAll(() => {
-        config.auth.jwtSecret = testJwtSecret;
+        config.auth.jwt.jwtAccessTokenSecret = testJwtSecret;
     });
 
     afterAll(() => {
-        config.auth.jwtSecret = originalJwtSecret;
+        config.auth.jwt.jwtAccessTokenSecret = originalJwtSecret;
     });
 
     test.each([
-        ['POST', '/api/v1/auth/forgot-password'],
-        ['POST', '/api/v1/auth/change-password'],
-        ['GET', '/api/v1/auth/csrf'],
-        ['GET', '/api/v1/auth/verify-email/']
+        ['POST', '/v1/auth/forgot-password'],
+        ['POST', '/v1/auth/change-password'],
+        ['GET', '/v1/auth/csrf'],
+        ['GET', '/v1/auth/verify-email/']
     ])('%s %s is registered without controller logic', async (method, path) => {
         const response = await request(app)[method.toLowerCase()](path);
 
@@ -55,9 +55,9 @@ describe('Authentication routes', () => {
         });
     });
 
-    test('validates POST /api/v1/auth/signin credentials before its service', async () => {
+    test('validates POST /v1/auth/signin credentials before its service', async () => {
         const invalidResponse = await request(app)
-            .post('/api/v1/auth/signin')
+            .post('/v1/auth/signin')
             .send({});
 
         expect(invalidResponse.statusCode).toBe(400);
@@ -67,7 +67,7 @@ describe('Authentication routes', () => {
         });
 
         const validResponse = await request(app)
-            .post('/api/v1/auth/signin')
+            .post('/v1/auth/signin')
             .send({
                 contactType: 'email',
                 email: 'ada@example.com',
@@ -75,13 +75,13 @@ describe('Authentication routes', () => {
                 name: 'Ada Lovelace'
             });
 
-        expect(validResponse.statusCode).toBe(200);
+        expect(validResponse.statusCode).toBe(202);
         expect(validResponse.body).toEqual({ success: true });
         expect(validResponse.body).not.toHaveProperty('verificationToken');
     });
 
-    test('requires authorization for POST /api/v1/auth/verify', async () => {
-        const response = await request(app).post('/api/v1/auth/verify');
+    test('requires authorization for POST /v1/auth/verify', async () => {
+        const response = await request(app).post('/v1/auth/verify');
 
         expect(response.statusCode).toBe(401);
         expect(response.body).toMatchObject({
@@ -93,7 +93,7 @@ describe('Authentication routes', () => {
     test('refreshes an authenticated user access token', async () => {
         const token = jwt.sign({ sub: '1' }, testJwtSecret);
         const response = await request(app)
-            .post('/api/v1/auth/refresh')
+            .post('/v1/auth/refresh')
             .set('Cookie', `auth_token=${token}`)
             .send({ unused: true });
 
@@ -109,7 +109,7 @@ describe('Authentication routes', () => {
     });
 
     test('clears both token cookies on logout without requiring authentication', async () => {
-        const response = await request(app).post('/api/v1/auth/logout');
+        const response = await request(app).post('/v1/auth/logout');
 
         expect(response.statusCode).toBe(200);
         expect(response.body).toEqual({ success: true });
@@ -129,7 +129,7 @@ describe('Authentication routes', () => {
         [{ email: 'ada@example.com', password: '' }],
         [{ email: 'ada@example.com', password: 'secret', unexpected: true }]
     ])('rejects invalid login body %j', async (body) => {
-        const response = await request(app).post('/api/v1/auth/login').send(body);
+        const response = await request(app).post('/v1/auth/login').send(body);
 
         expect(response.statusCode).toBe(400);
         expect(response.body).toMatchObject({
@@ -159,7 +159,7 @@ describe('Authentication routes', () => {
             password: 'secret'
         }
     ])('allows valid login body %j through validation', async (body) => {
-        const response = await request(app).post('/api/v1/auth/login').send(body);
+        const response = await request(app).post('/v1/auth/login').send(body);
 
         expect(response.statusCode).toBe(200);
         expect(response.body).toEqual({

@@ -1,4 +1,4 @@
-const createRefreshController = require('../../../src/controllers/refresh.controller');
+const createRefreshController = require('#src/controllers/v1/refresh.controller.js');
 
 describe('refresh controller', () => {
     test('passes the authenticated user to the service and sets the refresh-token cookie', async () => {

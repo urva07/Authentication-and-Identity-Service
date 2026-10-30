@@ -1,6 +1,7 @@
 const { z } = require('zod');
 const { ValidationError } = require('../errors');
 
+
 const refreshSchema = z.object({});
 
 const validateRefresh = (req, res, next) => {

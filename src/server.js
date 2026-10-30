@@ -1,9 +1,10 @@
 const app = require('./app');
 const config = require('./config/config');
-const initializeConnections = require('./config');
+const initializeConnections = require('#src/infrastructure/database/index.js');
 const { configureRepositories } = require('./repositories');
 const logger = require('./utils/logger');
-const createHealthApp = require('./healthApp');
+const { destroyIdleSockets, openSockets } = require('./lib/destroyIdleSockets');
+const healthApp = require('./healthApp');
 
 const PORT = config.app.port;
 
@@ -11,9 +12,11 @@ let server;
 let healthServer;
 let connections;
 let shuttingDown = false;
-let startupComplete = false;
 
-const healthApp = createHealthApp(() => startupComplete);
+healthApp.locals.startupComplete = false;
+healthApp.locals.shuttingDown = shuttingDown;
+app.locals.shuttingDown = shuttingDown;
+app.locals.requestCount = 0;
 
 const startServer = async () => {
     healthServer = await new Promise((resolve, reject) => {
@@ -54,6 +57,12 @@ const startServer = async () => {
         listeningServer.once('error', reject);
     });
 
+    server.setTimeout(config.app.connectionInactivityTimeoutMs);
+    server.keepAliveTimeout = config.app.connectionKeepAliveTimeoutMs;
+    server.headersTimeout = config.app.reqHeadersTimeoutMs;
+    server.requestTimeout = config.app.reqTimeoutMs;
+    server.maxConnections = config.app.maxConnections;
+
     server.on('connection', (socket) => {
         logger.info(
             'New connection from ' +
@@ -61,9 +70,34 @@ const startServer = async () => {
                 ':' +
                 socket.remotePort
         );
+
+        socket.inflightRequests = 0;
+        openSockets.add(socket);
+        socket.once('close', () => {
+            logger.info(
+                'Connection closed from ' +
+                    socket.remoteAddress +
+                    ':' +
+                    socket.remotePort
+            );
+            openSockets.delete(socket);
+        });
     });
 
-    startupComplete = true;
+    server.on('request', (req, res) => {
+        const socket = req.socket;
+        socket.inflightRequests += 1;
+
+        res.once('close', () => {
+            socket.inflightRequests -= 1;
+
+            if (shuttingDown && socket.inflightRequests === 0) {
+                socket.destroy();
+            }
+        });
+    });
+
+    healthApp.locals.startupComplete = true;
 };
 
 const shutdown = async (signal) => {
@@ -71,13 +105,14 @@ const shutdown = async (signal) => {
         return;
     }
 
-    shuttingDown = true;
     logger.info({ signal }, 'Shutdown signal received');
+    shuttingDown = true;
+    app.locals.shuttingDown = shuttingDown;
 
     const errors = [];
 
     if (healthServer) {
-        await new Promise((resolve) => {
+        new Promise((resolve) => {
             healthServer.close((error) => {
                 if (error) {
                     errors.push(error);
@@ -89,6 +124,9 @@ const shutdown = async (signal) => {
 
                 resolve();
             });
+
+            // Health checks are short-lived, so drop any lingering keep-alive sockets
+            healthServer.closeAllConnections();
         });
     }
 
@@ -104,33 +142,26 @@ const shutdown = async (signal) => {
             });
         });
 
-        await new Promise((resolve) => {
-            const waitForConnectionsToClose = () => {
-                server.getConnections((error, activeConnections) => {
-                    if (error) {
-                        errors.push(error);
-                        logger.error(
-                            { err: error },
-                            'Failed to check active connections'
-                        );
-                        serverClosed.then(resolve);
-                        return;
-                    }
+        logger.info({ activeConnections: openSockets.size }, 'Initiating shutdown for this many active connections');
 
-                    if (activeConnections === 0) {
-                        resolve();
-                        return;
-                    }
+        server.closeIdleConnections();
+        destroyIdleSockets();
 
-                    setImmediate(waitForConnectionsToClose);
-                });
-            };
-
-            waitForConnectionsToClose();
-        });
+        // Safety net: force-close any socket still open after a grace period
+        const forceCloseTimer = setTimeout(() => {
+            server.closeAllConnections();
+            logger.warn('Force-closing all remaining connections as the grace period has expired');
+        }, 30000);
+        forceCloseTimer.unref();
 
         await serverClosed;
+
+        clearTimeout(forceCloseTimer);
     }
+
+    logger.info('Closed all active connections. You may further get logs from the asynchronous close event of the connections.');
+
+    logger.info('Closing database connections');
 
     const closeConnections = [
         () => connections?.mongo?.close(),
@@ -153,7 +184,7 @@ const shutdown = async (signal) => {
     }
 
     process.exitCode = errors.length > 0 || process.exitCode ? 1 : 0;
-    logger.info('Shutdown complete');
+    logger.info('Shutdown completed');
     process.exit();
 };
 
@@ -171,7 +202,7 @@ process.on('SIGINT', () => {
 });
 
 startServer().catch((error) => {
-    logger.error({ err: error }, 'Failed to start server');
+    logger.fatal({ err: error }, 'Failed to start server');
     process.exitCode = 1;
     if (server || healthServer || connections) {
         shutdown('startup failure').catch((shutdownError) => {

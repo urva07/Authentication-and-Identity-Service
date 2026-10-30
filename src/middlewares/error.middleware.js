@@ -1,15 +1,16 @@
-const logger = require('../utils/logger');
-const { AppError } = require('../errors');
+const { AppError, PayloadTooLargeError } = require('../errors');
+
+const INTERNAL_SERVER_ERROR_MESSAGE = 'Internal Server Error';
 
 module.exports = (err, req, res, next) => {
-    const statusCode = err.statusCode || 500;
-    const log = err instanceof AppError &&
-        err.isOperational &&
-        statusCode >= 400 &&
-        statusCode < 500
-        ? logger.warn.bind(logger)
-        : logger.error.bind(logger);
-    const loggableError =
+    if (err.type === 'entity.too.large') {
+        err = new PayloadTooLargeError();
+    }
+
+    const isAppError = err instanceof AppError;
+    const statusCode = isAppError ? err.statusCode : 500;
+    // pino-http logs the request once the response finishes and reports res.err
+    res.err =
         err.name === 'ValidationError' && Array.isArray(err.errors)
             ? {
                   name: err.name,
@@ -18,22 +19,12 @@ module.exports = (err, req, res, next) => {
               }
             : err;
 
-    log(
-        {
-            err: loggableError,
-            statusCode,
-            method: req.method,
-            url: req.originalUrl
-        },
-        'Request failed'
-    );
-
     const response = {
         success: false,
-        message: err.message || 'Internal Server Error'
+        message: isAppError ? err.message : INTERNAL_SERVER_ERROR_MESSAGE
     };
 
-    if (err.errors) {
+    if (isAppError && err.errors) {
         response.errors = err.errors;
     }
 

@@ -1,4 +1,4 @@
-const createSigninController = require('../../../src/controllers/signin.controller');
+const createSigninController = require('#src/controllers/v1/signin.controller.js');
 
 describe('signin controller', () => {
     test('passes validated input to the service and returns success', async () => {
@@ -8,11 +8,12 @@ describe('signin controller', () => {
             password: 'secret',
             name: 'Ada Lovelace'
         };
+        const result = {
+            success: true,
+            message: 'A verification link has been sent to your email.'
+        };
         const signinService = {
-            signin: jest.fn().mockResolvedValue({
-                success: true,
-                verificationToken: 'encrypted-token'
-            })
+            signin: jest.fn().mockResolvedValue(result)
         };
         const controller = createSigninController(signinService);
         const res = {
@@ -21,11 +22,13 @@ describe('signin controller', () => {
         };
         const next = jest.fn();
 
-        await controller.post({ body: input }, res, next);
+        const abortSignal = new AbortController().signal;
 
-        expect(signinService.signin).toHaveBeenCalledWith(input);
-        expect(res.status).toHaveBeenCalledWith(200);
-        expect(res.json).toHaveBeenCalledWith({ success: true });
+        await controller.post({ body: input, abortSignal }, res, next);
+
+        expect(signinService.signin).toHaveBeenCalledWith(input, abortSignal);
+        expect(res.status).toHaveBeenCalledWith(202);
+        expect(res.json).toHaveBeenCalledWith(result);
         expect(next).not.toHaveBeenCalled();
     });
 

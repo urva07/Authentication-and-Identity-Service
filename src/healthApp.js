@@ -1,53 +1,43 @@
 const express = require('express');
+const { healthAppRoutes: routes } = require('./routes');
 const { Registry, collectDefaultMetrics } = require('prom-client');
+const logger = require('./utils/logger');
+const middlewares = require('./middlewares');
+const { recordRequestMetrics } = require('./monitoring/metrics');
 
-const createHealthApp = (isStarted) => {
-    const app = express();
-    const metricsRegistry = new Registry();
+const app = express();
+const metricsRegistry = new Registry();
 
-    collectDefaultMetrics({ register: metricsRegistry });
+collectDefaultMetrics({ register: metricsRegistry });
 
-    app.get('/startup', (req, res) => {
-        if (!isStarted()) {
-            return res.status(503).json({
-                success: false,
-                status: 'starting'
-            });
+app.use(middlewares.pinoHttp({
+    logger,
+    redact: [
+        'req.headers.cookie',
+        'req.headers.authorization',
+        'res.headers.set-cookie'
+    ],
+    customLogLevel: (req, res, error) => {
+        if (error || res.statusCode >= 500) {
+            return 'error';
         }
 
-        return res.status(200).json({
-            success: true,
-            status: 'started'
-        });
-    });
+        if (res.statusCode >= 400) {
+            return 'warn';
+        }
 
-    app.get('/health', (req, res) =>
-        res.status(200).json({
-            success: true,
-            message: 'Server is healthy'
-        })
-    );
-
-    const notImplemented = (req, res) => {
-        res.status(501).json({
-            success: false,
-            message: 'Health check not implemented'
-        });
+        return 'info';
+    },
+    customSuccessObject: (req, res, logObject) => {
+        recordRequestMetrics(req, res, logObject.responseTime);
+        return logObject;
+    },
+    customErrorObject: (req, res, error, logObject) => {
+        recordRequestMetrics(req, res, logObject.responseTime);
+        return logObject;
     }
+}));
 
-    app.get('/health/live', notImplemented);
-    app.get('/health/ready', notImplemented);
-    app.get('/health/metrics', async (req, res, next) => {
-        try {
-            const metrics = await metricsRegistry.metrics();
-            res.set('Content-Type', metricsRegistry.contentType);
-            return res.status(200).send(metrics);
-        } catch (error) {
-            return next(error);
-        }
-    });
+app.use('/', routes)
 
-    return app;
-};
-
-module.exports = createHealthApp;
+module.exports = app;

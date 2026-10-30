@@ -1,18 +1,18 @@
 const { z } = require('zod');
 const { ValidationError } = require('../errors');
 
-const contactSchema = z.string().trim().min(1);
+const passwordSchema = z.string().trim().min(4, 'Password must be at least 4 characters long');
 
 const loginSchema = z.discriminatedUnion('contactType', [
     z.object({
         contactType: z.literal('email'),
-        email: z.email().trim(),
-        password: contactSchema
+        email: z.email('Invalid email address'),
+        password: passwordSchema
     }).strict(),
     z.object({
         contactType: z.literal('phone'),
-        phone: contactSchema.max(30),
-        password: contactSchema
+        phone: z.string().trim().min(10, 'Phone number must be at least 10 characters long').max(15, 'Phone number must be at most 15 characters long'),
+        password: passwordSchema
     }).strict()
 ]);
 

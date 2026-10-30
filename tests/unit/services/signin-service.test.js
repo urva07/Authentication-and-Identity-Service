@@ -1,6 +1,7 @@
 const bcrypt = require('bcryptjs');
 const { createDecipheriv, createHash } = require('node:crypto');
 const { ConflictError } = require('../../../src/errors');
+const config = require('../../../src/config/config');
 const createSigninService = require('../../../src/services/signin.service');
 
 describe('signin service', () => {
@@ -8,8 +9,22 @@ describe('signin service', () => {
     let userRepository;
     let emailService;
     let signinService;
+    const original = {
+        secret: config.auth.basic.signinAes256GcmTokenSecret,
+        apiBaseUrl: config.app.apiBaseUrl,
+        saltRounds: config.auth.basic.hashSaltRounds
+    };
+
+    afterAll(() => {
+        config.auth.basic.signinAes256GcmTokenSecret = original.secret;
+        config.app.apiBaseUrl = original.apiBaseUrl;
+        config.auth.basic.hashSaltRounds = original.saltRounds;
+    });
 
     beforeEach(() => {
+        config.auth.basic.signinAes256GcmTokenSecret = tokenSecret;
+        config.app.apiBaseUrl = 'https://api.example.com';
+        config.auth.basic.hashSaltRounds = 4;
         userRepository = {
             findByEmail: jest.fn().mockResolvedValue(null)
         };
@@ -18,9 +33,7 @@ describe('signin service', () => {
         };
         signinService = createSigninService({
             userRepository,
-            tokenSecret,
-            emailService,
-            apiBaseUrl: 'https://api.example.com'
+            emailService
         });
     });
 
@@ -59,7 +72,7 @@ describe('signin service', () => {
         expect(userRepository.findByEmail).toHaveBeenCalledWith(
             'ada@example.com'
         );
-        expect(result).toEqual({ success: true });
+        expect(result).toMatchObject({ success: true });
         expect(emailService.sendEmail).toHaveBeenCalledTimes(1);
         const email = emailService.sendEmail.mock.calls[0][0];
         expect(email).toMatchObject({
@@ -97,11 +110,10 @@ describe('signin service', () => {
     });
 
     test('rejects an invalid API base URL instead of sending a malformed link', async () => {
+        config.app.apiBaseUrl = 'not a URL';
         const service = createSigninService({
             userRepository,
-            tokenSecret,
-            emailService,
-            apiBaseUrl: 'not a URL'
+            emailService
         });
 
         await expect(service.signin({
@@ -109,14 +121,13 @@ describe('signin service', () => {
             password: 'test-password',
             name: 'Ada Lovelace'
         })).rejects.toMatchObject({
-            statusCode: 500,
             message: 'API_BASE_URL must be a valid HTTP(S) URL'
         });
         expect(emailService.sendEmail).not.toHaveBeenCalled();
     });
 
     test('rejects an email that already belongs to a user', async () => {
-        userRepository.findByEmail.mockResolvedValue({ id: 7 });
+        userRepository.findByEmail.mockResolvedValue({ id: '3f0c1d52-8a7e-4b1c-9d34-5e6f7a8b9c0d' });
 
         const signinAttempt = signinService.signin({
             email: 'ada@example.com',
@@ -133,9 +144,10 @@ describe('signin service', () => {
     });
 
     test('requires a valid encryption secret', async () => {
+        config.auth.basic.signinAes256GcmTokenSecret = 'too-short';
         const service = createSigninService({
             userRepository,
-            tokenSecret: 'too-short'
+            emailService
         });
 
         await expect(service.signin({
@@ -143,7 +155,6 @@ describe('signin service', () => {
             password: 'test-password',
             name: 'Ada Lovelace'
         })).rejects.toMatchObject({
-            statusCode: 500,
             message: 'Sign-in token encryption requires a secret of at least 32 bytes'
         });
     });

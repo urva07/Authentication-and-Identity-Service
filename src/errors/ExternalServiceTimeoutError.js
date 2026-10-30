@@ -1,10 +1,9 @@
 const AppError = require('./AppError');
 
 class ExternalServiceTimeoutError extends AppError {
-    constructor(cause) {
-        super('External service request timed out', 504);
+    constructor(message='External service request timed out', statusCode=504) {
+        super(message, statusCode);
         this.name = 'ExternalServiceTimeoutError';
-        this.cause = cause;
     }
 }
 

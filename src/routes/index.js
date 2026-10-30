@@ -1,8 +1,8 @@
-const healthRoutes = require('./health.routes');
-const v1Routes = require('./v1');
+const healthAppRoutes = require('./healthApp');
+const mainAppRoutes = require('./mainApp');
 
 
 module.exports = {
-    healthRoutes,
-    v1Routes
+    healthAppRoutes,
+    mainAppRoutes
 };

@@ -5,14 +5,14 @@ const createRefreshService = require('../../../src/services/refresh.service');
 
 describe('refresh service', () => {
     const jwtSecret = 'test-secret-with-enough-entropy-for-signing';
-    const originalJwtSecret = config.auth.jwtSecret;
+    const originalJwtSecret = config.auth.jwt.jwtAccessTokenSecret;
 
     afterEach(() => {
-        config.auth.jwtSecret = originalJwtSecret;
+        config.auth.jwt.jwtAccessTokenSecret = originalJwtSecret;
     });
 
     test('creates an access token for the authenticated user', () => {
-        config.auth.jwtSecret = jwtSecret;
+        config.auth.jwt.jwtAccessTokenSecret = jwtSecret;
         const refreshService = createRefreshService();
 
         const accessToken = refreshService.refreshAccessToken({
@@ -33,7 +33,7 @@ describe('refresh service', () => {
     });
 
     test('rejects a missing or weak JWT secret', () => {
-        config.auth.jwtSecret = 'short';
+        config.auth.jwt.jwtAccessTokenSecret = 'short';
         const refreshService = createRefreshService();
 
         expect(() =>

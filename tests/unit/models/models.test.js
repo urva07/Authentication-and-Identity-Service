@@ -26,12 +26,19 @@ describe('MySQL user models', () => {
         expect(models.User.tableName).toBe('users');
         expect(models.UserPassword.tableName).toBe('user_passwords');
         expect(models.IdentityProvider.tableName).toBe('user_idps');
-        expect(models.User.rawAttributes.id.type.toString()).toBe(
-            DataTypes.BIGINT.UNSIGNED.toString()
-        );
+        expect(models.User.rawAttributes.id.type).toBeInstanceOf(DataTypes.UUID);
         expect(models.User.rawAttributes.email.unique).toBe(true);
         expect(models.User.rawAttributes.phone.unique).toBe(true);
-        expect(models.User.rawAttributes.id.autoIncrement).toBe(true);
+        expect(models.User.rawAttributes.id.autoIncrement).toBeFalsy();
+        expect(models.User.rawAttributes.id.defaultValue).toBeInstanceOf(
+            DataTypes.UUIDV4
+        );
+        expect(models.UserPassword.rawAttributes.userId.type).toBeInstanceOf(
+            DataTypes.UUID
+        );
+        expect(models.IdentityProvider.rawAttributes.userId.type).toBeInstanceOf(
+            DataTypes.UUID
+        );
         expect(models.User.rawAttributes.profileCompleted.defaultValue).toBe(
             false
         );
@@ -45,7 +52,7 @@ describe('MySQL user models', () => {
         const { User, UserPassword, IdentityProvider } =
             initializeModels(sequelize);
 
-        expect(User.associations.passwordCredential.target).toBe(UserPassword);
+        expect(User.associations.password.target).toBe(UserPassword);
         expect(User.associations.identityProviders.target).toBe(
             IdentityProvider
         );

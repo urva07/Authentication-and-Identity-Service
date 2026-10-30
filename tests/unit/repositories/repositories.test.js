@@ -5,6 +5,7 @@ const {
 } = require('../../../src/repositories');
 
 describe('authentication repositories', () => {
+    const userId = '3f0c1d52-8a7e-4b1c-9d34-5e6f7a8b9c0d';
     const createModel = () => ({
         create: jest.fn(),
         findByPk: jest.fn(),
@@ -18,35 +19,36 @@ describe('authentication repositories', () => {
         const User = createModel();
         const user = userRepository(User);
         const attributes = { firstName: 'Ada' };
-        User.create.mockResolvedValue({ id: 1, ...attributes });
-        User.findByPk.mockResolvedValue({ id: 1 });
+        User.create.mockResolvedValue({ id: userId, ...attributes });
+        User.findByPk.mockResolvedValue({ id: userId });
         User.update.mockResolvedValue([1]);
         User.destroy.mockResolvedValue(1);
 
         await expect(user.create(attributes)).resolves.toEqual({
-            id: 1,
+            id: userId,
             ...attributes
         });
-        await expect(user.findById(1)).resolves.toEqual({ id: 1 });
-        await expect(user.updateById(1, attributes)).resolves.toEqual([1]);
-        await expect(user.deleteById(1)).resolves.toBe(1);
-        expect(User.findByPk).toHaveBeenCalledWith(1);
+        await expect(user.findById(userId)).resolves.toEqual({ id: userId });
+        await expect(user.updateById(userId, attributes)).resolves.toEqual([1]);
+        await expect(user.deleteById(userId)).resolves.toBe(1);
+        expect(User.create).toHaveBeenCalledWith(attributes, {});
+        expect(User.findByPk).toHaveBeenCalledWith(userId, {});
         expect(User.update).toHaveBeenCalledWith(attributes, {
-            where: { id: 1 }
+            where: { id: userId }
         });
-        expect(User.destroy).toHaveBeenCalledWith({ where: { id: 1 } });
+        expect(User.destroy).toHaveBeenCalledWith({ where: { id: userId } });
     });
 
     test('looks up users by email and phone login identifiers', async () => {
         const User = createModel();
         const user = userRepository(User);
-        User.findOne.mockResolvedValue({ id: 1 });
+        User.findOne.mockResolvedValue({ id: userId });
 
         await expect(user.findByEmail('ada@example.com')).resolves.toEqual({
-            id: 1
+            id: userId
         });
         await expect(user.findByPhone('+12025550123')).resolves.toEqual({
-            id: 1
+            id: userId
         });
         expect(User.findOne).toHaveBeenNthCalledWith(1, {
             where: { email: 'ada@example.com' }
@@ -56,37 +58,65 @@ describe('authentication repositories', () => {
         });
     });
 
+    test('finds users by email including their required password hash', async () => {
+        const { UserPassword } = require('../../../src/models/index.js');
+        const User = createModel();
+        const user = userRepository(User);
+        User.findOne.mockResolvedValue({ id: userId });
+
+        await expect(
+            user.findByEmailWithPassword('ada@example.com')
+        ).resolves.toEqual({ id: userId });
+        expect(User.findOne).toHaveBeenCalledWith({
+            where: { email: 'ada@example.com' },
+            include: [
+                {
+                    model: UserPassword,
+                    required: true,
+                    attributes: ['passwordHash']
+                }
+            ]
+        });
+
+        await user.findByEmailWithPassword('ada@example.com', {
+            transaction: 't'
+        });
+        expect(User.findOne).toHaveBeenLastCalledWith(
+            expect.objectContaining({ transaction: 't' })
+        );
+    });
+
     test('finds password credentials by user and updates or deletes them', async () => {
         const UserPassword = createModel();
         const userPassword = userPasswordRepository(UserPassword);
-        UserPassword.findOne.mockResolvedValue({ userId: 1 });
+        UserPassword.findOne.mockResolvedValue({ userId });
         UserPassword.update.mockResolvedValue([1]);
         UserPassword.destroy.mockResolvedValue(1);
 
-        await expect(userPassword.findByUserId(1)).resolves.toEqual({
-            userId: 1
+        await expect(userPassword.findByUserId(userId)).resolves.toEqual({
+            userId
         });
         await expect(
-            userPassword.updateByUserId(1, { passwordHash: 'hash' })
+            userPassword.updateByUserId(userId, { passwordHash: 'hash' })
         ).resolves.toEqual([1]);
-        await expect(userPassword.deleteByUserId(1)).resolves.toBe(1);
+        await expect(userPassword.deleteByUserId(userId)).resolves.toBe(1);
         expect(UserPassword.findOne).toHaveBeenCalledWith({
-            where: { userId: 1 }
+            where: { userId }
         });
     });
 
     test('looks up and lists identities with their provider keys', async () => {
         const IdentityProvider = createModel();
         const identityProvider = identityProviderRepository(IdentityProvider);
-        IdentityProvider.findOne.mockResolvedValue({ userId: 1 });
-        IdentityProvider.findAll.mockResolvedValue([{ userId: 1 }]);
+        IdentityProvider.findOne.mockResolvedValue({ userId });
+        IdentityProvider.findAll.mockResolvedValue([{ userId }]);
         IdentityProvider.destroy.mockResolvedValue(1);
 
         await expect(
             identityProvider.findByProviderIdentity('google', 'subject-1')
-        ).resolves.toEqual({ userId: 1 });
-        await expect(identityProvider.findAllByUserId(1)).resolves.toEqual([
-            { userId: 1 }
+        ).resolves.toEqual({ userId });
+        await expect(identityProvider.findAllByUserId(userId)).resolves.toEqual([
+            { userId }
         ]);
         await expect(
             identityProvider.deleteByProviderIdentity('google', 'subject-1')

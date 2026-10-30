@@ -10,7 +10,7 @@ const defineUserPassword = (sequelize) =>
                 primaryKey: true
             },
             userId: {
-                type: DataTypes.BIGINT.UNSIGNED,
+                type: DataTypes.UUID,
                 allowNull: false,
                 unique: true
             },

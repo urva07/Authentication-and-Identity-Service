@@ -19,9 +19,8 @@ module.exports = {
     async up(queryInterface) {
         await queryInterface.createTable('users', {
             id: {
-                type: DataTypes.BIGINT.UNSIGNED,
+                type: DataTypes.UUID,
                 allowNull: false,
-                autoIncrement: true,
                 primaryKey: true
             },
             email: {
@@ -77,7 +76,7 @@ module.exports = {
                 primaryKey: true
             },
             user_id: {
-                type: DataTypes.BIGINT.UNSIGNED,
+                type: DataTypes.UUID,
                 allowNull: false,
                 unique: true,
                 references: {
@@ -102,7 +101,7 @@ module.exports = {
                 primaryKey: true
             },
             user_id: {
-                type: DataTypes.BIGINT.UNSIGNED,
+                type: DataTypes.UUID,
                 allowNull: false,
                 references: {
                     model: 'users',

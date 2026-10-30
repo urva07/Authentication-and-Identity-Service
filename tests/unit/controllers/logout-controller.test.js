@@ -1,4 +1,4 @@
-const createLogoutController = require('../../../src/controllers/logout.controller');
+const createLogoutController = require('#src/controllers/v1/logout.controller.js');
 
 describe('logout controller', () => {
     test('clears access and refresh token cookies after logout service succeeds', async () => {
