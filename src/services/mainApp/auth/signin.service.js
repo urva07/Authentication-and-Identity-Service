@@ -1,13 +1,17 @@
 const path = require('node:path');
 const ejs = require('ejs');
-const config = require('../../../config/config');
-const { ConflictError } = require('../../../errors');
-const { getUserRepository } = require('../../../repositories');
+const config = require('#src/config/config.js');
+const { ConflictError } = require('#src/errors/index.js');
+const { mysql: { getUserRepository } } = require('#src/repositories/index.js');
 const createEmailService = require('./email.service');
 const { hashPassword } = require('#src/utils/hashPasswordAndVerify.js');
 const { generateAes256GcmToken } = require('#src/utils/aes256GcmToken.js');
 const { createSigninTokenKey } = require('#src/utils/signinTokenKey.js');
-const logger = require('#src/utils/logger.js');
+const defaultLogger = require('#src/utils/logger.js');
+const { generateUUID } = require('#src/utils/userIdGenerator.js');
+const requestCoalescer = require('#src/lib/requestCoalescer.js')
+const createCoalescingKey = require('#src/lib/createCoalescingKey.js');
+
 
 const VERIFY_EMAIL_PATH = '/v1/auth/verify-email';
 
@@ -54,13 +58,23 @@ const createSigninService = ({
         return productionEmailService;
     };
 
-    const signin = async ({ email, password, name }, signal) => {
+    const signin = async ({ email, password, name }, signal, logger = defaultLogger) => {
+        logger.debug('Sign-in attempt started');
         const normalizedEmail = email.trim().toLowerCase();
         const repository = userRepository || getUserRepository();
-        const existingUser = await repository.findByEmail(normalizedEmail);
+        const existingUser = await requestCoalescer(
+            createCoalescingKey({
+                db: "mysql",
+                repository: "userRepository",
+                method: "findByEmail",
+                args: [normalizedEmail]
+            }),
+            () => repository.findByEmail(normalizedEmail),
+            logger
+        );
 
         if (existingUser) {
-            logger.debug(`Sign-in attempt with existing email: ${normalizedEmail}`);
+            logger.debug('Sign-in attempt with an existing email');
             throw new ConflictError('An account with this email already exists');
         }
 
@@ -73,15 +87,17 @@ const createSigninService = ({
                 email: normalizedEmail,
                 passwordHash,
                 name,
+                sub: generateUUID(),
                 iat: issuedAt,
-                exp: issuedAt + tokenTtlSeconds
+                exp: issuedAt + tokenTtlSeconds,
+                jti: generateUUID()
             },
             encryptionKey
         );
 
         const verificationUrl = createVerificationUrl(verificationToken);
         const html = await ejs.renderFile(
-            path.join(__dirname, '../views/verifyEmail.ejs'),
+            path.join(process.cwd(), 'src/views/emailTemplates/verifyEmail.ejs'),
             { 
                 name, 
                 verificationUrl, 
@@ -103,7 +119,8 @@ const createSigninService = ({
                 ].join('\n'),
                 html
             }, 
-            signal
+            signal,
+            logger
         );
 
         return { 
@@ -114,5 +131,6 @@ const createSigninService = ({
 
     return { signin };
 };
+
 
 module.exports = createSigninService;

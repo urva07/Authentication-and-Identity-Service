@@ -1,9 +1,10 @@
 const express = require('express');
 const { healthAppRoutes: routes } = require('./routes');
-const { Registry, collectDefaultMetrics } = require('prom-client');
+const { Registry, collectDefaultMetrics } = require('@prometheus-io/client');
 const logger = require('./utils/logger');
 const middlewares = require('./middlewares');
-const { recordRequestMetrics } = require('./monitoring/metrics');
+const { recordRequestMetrics } = require('./monitoring');
+
 
 const app = express();
 const metricsRegistry = new Registry();
@@ -39,5 +40,6 @@ app.use(middlewares.pinoHttp({
 }));
 
 app.use('/', routes)
+
 
 module.exports = app;

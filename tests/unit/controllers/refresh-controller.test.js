@@ -1,29 +1,35 @@
-const createRefreshController = require('#src/controllers/v1/refresh.controller.js');
+const { describe, test, jest: jestApi, expect } = require('@jest/globals');
+const config = require('../../../src/config/config');
+const createRefreshController = require('../../../src/controllers/mainApp/v1/auth/refresh.controller');
 
 describe('refresh controller', () => {
-    test('passes the authenticated user to the service and sets the refresh-token cookie', async () => {
+    test('passes the authenticated user to the service and sets the access-token cookie', async () => {
         const user = { id: '42' };
         const refreshService = {
-            refreshAccessToken: jest.fn().mockReturnValue('signed-access-token')
+            refreshAccessToken: jestApi.fn().mockReturnValue('signed-access-token')
         };
         const controller = createRefreshController(refreshService);
         const res = {
-            cookie: jest.fn(),
-            status: jest.fn().mockReturnThis(),
-            json: jest.fn()
+            cookie: jestApi.fn(),
+            status: jestApi.fn().mockReturnThis(),
+            json: jestApi.fn()
         };
-        const next = jest.fn();
+        const next = jestApi.fn();
+        const requestLogger = { debug: jestApi.fn() };
 
-        await controller.post({ user }, res, next);
+        await controller.post({ user, log: requestLogger }, res, next);
 
-        expect(refreshService.refreshAccessToken).toHaveBeenCalledWith(user);
+        expect(refreshService.refreshAccessToken).toHaveBeenCalledWith(
+            user,
+            requestLogger
+        );
         expect(res.cookie).toHaveBeenCalledWith(
-            'refresh_token',
+            config.auth.jwt.cookieOptions.access.name,
             'signed-access-token',
             expect.objectContaining({
-                httpOnly: false,
-                sameSite: 'lax',
-                path: '/'
+                httpOnly: config.auth.jwt.cookieOptions.access.httpOnly,
+                sameSite: config.auth.jwt.cookieOptions.access.sameSite,
+                path: config.auth.jwt.cookieOptions.access.path
             })
         );
         expect(res.status).toHaveBeenCalledWith(200);
@@ -37,13 +43,14 @@ describe('refresh controller', () => {
     test('forwards service errors to error middleware', async () => {
         const error = new Error('token signing failed');
         const controller = createRefreshController({
-            refreshAccessToken: jest.fn().mockRejectedValue(error)
+            refreshAccessToken: jestApi.fn().mockRejectedValue(error)
         });
-        const next = jest.fn();
+        const next = jestApi.fn();
+        const requestLogger = { debug: jestApi.fn() };
 
         await controller.post(
-            { user: { id: '42' } },
-            { cookie: jest.fn(), status: jest.fn(), json: jest.fn() },
+            { user: { id: '42' }, log: requestLogger },
+            { cookie: jestApi.fn(), status: jestApi.fn(), json: jestApi.fn() },
             next
         );
 

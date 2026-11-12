@@ -1,3 +1,4 @@
+const { describe, afterEach, jest: jestApi, test, expect } = require('@jest/globals');
 const { EventEmitter } = require('node:events');
 const {
     ExternalServiceTimeoutError
@@ -9,7 +10,7 @@ describe('abort signal middleware', () => {
     const originalTimeoutMs = config.app.externalApiTimeoutMs;
 
     afterEach(() => {
-        jest.useRealTimers();
+        jestApi.useRealTimers();
         config.app.externalApiTimeoutMs = originalTimeoutMs;
     });
 
@@ -21,16 +22,16 @@ describe('abort signal middleware', () => {
     };
 
     test('aborts the request signal with a 504 reason when the deadline expires', () => {
-        jest.useFakeTimers();
+        jestApi.useFakeTimers();
         config.app.externalApiTimeoutMs = 25;
         const { req, res } = createRequestResponse();
-        const next = jest.fn();
+        const next = jestApi.fn();
 
         abortSignalMiddleware(req, res, next);
         expect(req.abortSignal.aborted).toBe(false);
         expect(next).toHaveBeenCalledWith();
 
-        jest.advanceTimersByTime(25);
+        jestApi.advanceTimersByTime(25);
 
         expect(req.abortSignal.aborted).toBe(true);
         expect(req.abortSignal.reason).toBeInstanceOf(
@@ -40,30 +41,30 @@ describe('abort signal middleware', () => {
     });
 
     test('aborts the request signal when the client disconnects', () => {
-        jest.useFakeTimers();
+        jestApi.useFakeTimers();
         config.app.externalApiTimeoutMs = 1000;
         const { req, res } = createRequestResponse();
-        const next = jest.fn();
+        const next = jestApi.fn();
 
         abortSignalMiddleware(req, res, next);
         req.emit('aborted');
 
         expect(req.abortSignal.aborted).toBe(true);
         expect(req.abortSignal.reason.message).toBe('Client disconnected');
-        expect(jest.getTimerCount()).toBe(0);
+        expect(jestApi.getTimerCount()).toBe(0);
     });
 
     test('clears its deadline after the response finishes', () => {
-        jest.useFakeTimers();
+        jestApi.useFakeTimers();
         config.app.externalApiTimeoutMs = 1000;
         const { req, res } = createRequestResponse();
 
-        abortSignalMiddleware(req, res, jest.fn());
+        abortSignalMiddleware(req, res, jestApi.fn());
         res.writableEnded = true;
         res.emit('finish');
-        jest.advanceTimersByTime(1000);
+        jestApi.advanceTimersByTime(1000);
 
         expect(req.abortSignal.aborted).toBe(false);
-        expect(jest.getTimerCount()).toBe(0);
+        expect(jestApi.getTimerCount()).toBe(0);
     });
 });

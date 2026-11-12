@@ -1,3 +1,4 @@
+const { describe, test, jest: jestApi, expect } = require('@jest/globals');
 const loginValidator = require('../../../src/validators/login.validator');
 const { loginSchema } = loginValidator;
 
@@ -5,18 +6,16 @@ describe('login POST validator', () => {
     test('validates login POST bodies and replaces them with parsed input', () => {
         const req = {
             body: {
-                contactType: 'email',
                 email: 'ada@example.com',
                 password: 'secret'
             }
         };
-        const next = jest.fn();
+        const next = jestApi.fn();
 
         loginValidator.post(req, {}, next);
 
         expect(next).toHaveBeenCalledWith();
         expect(req.body).toEqual({
-            contactType: 'email',
             email: 'ada@example.com',
             password: 'secret'
         });
@@ -25,10 +24,16 @@ describe('login POST validator', () => {
     test('exports the login request schema', () => {
         expect(
             loginSchema.safeParse({
-                contactType: 'phone',
-                phone: '+12025550123',
+                email: 'ada@example.com',
                 password: 'secret'
             }).success
         ).toBe(true);
+    });
+
+    test('rejects phone as a login identifier', () => {
+        expect(loginSchema.safeParse({
+            phone: '+12025550123',
+            password: 'secret'
+        }).success).toBe(false);
     });
 });

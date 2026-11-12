@@ -1,41 +1,47 @@
-const createVerifyController = require('#src/controllers/v1/verify.controller.js');
+const { describe, test, jest: jestApi, expect } = require('@jest/globals');
+const createVerifyController = require('../../../src/controllers/mainApp/v1/auth/verify.controller');
 
 describe('verify controller', () => {
     test('passes the authenticated identity to the service and returns its result', async () => {
         const user = { id: '42' };
         const result = { id: '42', email: 'ada@example.com' };
         const verifyService = {
-            verifyUser: jest.fn().mockResolvedValue(result)
+            verifyUser: jestApi.fn().mockResolvedValue(result)
         };
         const controller = createVerifyController(verifyService);
-        const req = { user };
+        const req = { user, log: { debug: jestApi.fn() } };
         const res = {
-            status: jest.fn().mockReturnThis(),
-            json: jest.fn()
+            header: jestApi.fn(),
+            status: jestApi.fn().mockReturnThis(),
+            send: jestApi.fn()
         };
-        const next = jest.fn();
+        const next = jestApi.fn();
 
         await controller.post(req, res, next);
 
-        expect(verifyService.verifyUser).toHaveBeenCalledWith('42');
+        expect(verifyService.verifyUser).toHaveBeenCalledWith(user, req.log);
         expect(res.status).toHaveBeenCalledWith(200);
-        expect(res.json).toHaveBeenCalledWith({
-            success: true,
-            user: result
-        });
+        expect(res.header).toHaveBeenCalledWith('x-user-id', result.id);
+        expect(res.header).toHaveBeenCalledWith('x-user-email', result.email);
+        expect(res.header).toHaveBeenCalledWith(
+            'x-user-name',
+            `${result.firstName} ${result.lastName}`
+        );
+        expect(res.send).toHaveBeenCalled();
         expect(next).not.toHaveBeenCalled();
     });
 
     test('forwards service errors to error middleware', async () => {
         const error = new Error('user lookup failed');
         const controller = createVerifyController({
-            verifyUser: jest.fn().mockRejectedValue(error)
+            verifyUser: jestApi.fn().mockRejectedValue(error)
         });
-        const next = jest.fn();
+        const next = jestApi.fn();
+        const requestLogger = { debug: jestApi.fn() };
 
         await controller.post(
-            { user: { id: '42' } },
-            { status: jest.fn(), json: jest.fn() },
+            { user: { id: '42' }, log: requestLogger },
+            { status: jestApi.fn(), json: jestApi.fn() },
             next
         );
 

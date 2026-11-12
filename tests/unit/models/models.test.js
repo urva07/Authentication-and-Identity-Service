@@ -1,3 +1,4 @@
+const { describe, beforeEach, afterEach, test, expect } = require('@jest/globals');
 const { DataTypes, Sequelize } = require('sequelize');
 const initializeModels = require('../../../src/models');
 

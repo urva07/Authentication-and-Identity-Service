@@ -9,6 +9,10 @@ configuration into those factories. Production controllers instantiate
 services without arguments; repository-backed services resolve their
 repositories from the shared registry after Sequelize models are configured at
 startup, and other services use their imported configuration or clients.
+Request-facing service methods accept the request-scoped logger as their final
+argument. Controllers pass `req.log`, and services forward it to nested service
+calls; callers outside an HTTP request can omit it to use the application
+logger.
 
 `login.service.js` returns `loginUser(credentials)`. It finds users by email or
 phone, verifies the supplied password against its bcrypt hash, and signs a
@@ -20,6 +24,9 @@ enabling email or phone login; the service requires a `JWT_SECRET` of at least
 `verify.service.js` returns the current public user profile for an
 authenticated user ID, or an authentication error if that user no longer
 exists.
+
+`oidc/googleCallback.service.js` returns the user supplied by the Google
+Passport strategy, or an authentication error when no user is present.
 
 `refresh.service.js` creates a one-hour access token for the authenticated
 user supplied by the refresh route's authentication middleware.

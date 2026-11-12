@@ -20,7 +20,9 @@ const connectMongoDB = async () => {
     });
     logger.info('MongoDB connected');
 
-    return mongoose.connection;
 };
 
-module.exports = connectMongoDB;
+module.exports = {
+    connectMongoDB,
+    mongoClient: mongoose.connection
+};

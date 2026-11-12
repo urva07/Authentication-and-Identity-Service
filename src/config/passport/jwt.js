@@ -1,25 +1,38 @@
 const {Strategy: JwtStrategy, ExtractJwt} = require('passport-jwt');
 const config = require('../config');
-const { getUserRepository } = require('#src/repositories/index.js');
+const { mysql: { getUserRepository } } = require('#src/repositories/index.js');
 const logger = require('#src/utils/logger.js');
+const { AuthenticationError } = require('#src/errors/index.js');
+const requestCoalescer = require('#src/lib/requestCoalescer.js')
+const createCoalescingKey = require('#src/lib/createCoalescingKey.js');
+
 
 const userExtractor = async (payload, done) => {
     try {
-        const userId = payload.sub;
         logger.debug('Looking up user for JWT authentication');
         const userRepository = getUserRepository();
-        const user = await userRepository.findById(userId);
+        const args = [payload.sub]
+        const user = await requestCoalescer(
+            createCoalescingKey({
+                db: "mysql",
+                repository: "userRepository",
+                method: "findById",
+                args
+            }),
+            () => userRepository.findById(...args),
+            logger
+        );
 
         if (!user) {
             logger.debug('JWT authentication rejected: user was not found');
-            return done(null, false);
+            return done(new AuthenticationError("Invalid token"));
         }
 
         logger.debug('JWT authentication user lookup succeeded');
         return done(null, user);
     } catch (error) {
         logger.debug('JWT authentication user lookup failed');
-        return done(error, false);
+        return done(error);
     }
 };
 
@@ -73,6 +86,7 @@ const createJwtStrategy = (
         userExtractor
     });
 };
+
 
 module.exports = {
     jwtStrategy: createJwtStrategy

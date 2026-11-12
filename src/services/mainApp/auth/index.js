@@ -5,5 +5,9 @@ module.exports = {
     "refresh.service": require('./refresh.service'),
     "logout.service": require('./logout.service'),
     "email.service": require('./email.service'),
-    "signin.service": require('./signin.service')
+    "signin.service": require('./signin.service'),
+    "forgot-password.service": require('./forgotPassword.service'),
+    "passport-login.service": require('./passportLogin.service'),
+    "change-password.service": require('./changePassword.service'),
+    "oidc.services": require('./oidc')
 };

@@ -3,15 +3,21 @@ const config = require('#src/config/config.js');
 const createLogoutController = (logoutService) => ({
     post: async (req, res, next) => {
         try {
-            const result = await logoutService.logoutUser();
-            const cookieOptions = {
-                secure: config.app.environment === 'production',
-                sameSite: 'lax',
-                path: '/'
+            const result = await logoutService.logoutUser(req.log);
+            const refreshCookieOptions = {
+                secure: config.auth.jwt.cookieOptions.refresh.secure,
+                sameSite: config.auth.jwt.cookieOptions.refresh.sameSite,
+                path: config.auth.jwt.cookieOptions.refresh.path,
             };
 
-            res.clearCookie(config.auth.jwt.jwtAccessTokenCookieName, cookieOptions);
-            res.clearCookie(config.auth.jwt.jwtRefreshTokenCookieName, cookieOptions);
+            const accessCookieOptions = {
+                secure: config.auth.jwt.cookieOptions.access.secure,
+                sameSite: config.auth.jwt.cookieOptions.access.sameSite,
+                path: config.auth.jwt.cookieOptions.access.path,
+            };
+
+            res.clearCookie(config.auth.jwt.cookieOptions.access.name, accessCookieOptions);
+            res.clearCookie(config.auth.jwt.cookieOptions.refresh.name, refreshCookieOptions);
 
             return res.status(200).json({
                 success: result.loggedOut

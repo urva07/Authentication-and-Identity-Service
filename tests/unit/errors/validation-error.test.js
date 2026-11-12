@@ -1,4 +1,5 @@
-const { ZodError, z } = require('zod');
+const { describe, test, expect } = require('@jest/globals');
+const { z } = require('zod');
 const { ValidationError } = require('../../../src/errors');
 
 describe('ValidationError', () => {
@@ -22,7 +23,7 @@ describe('ValidationError', () => {
 
     test('rejects inputs that are not Zod errors', () => {
         expect(() => new ValidationError(new Error('invalid'))).toThrow(
-            'ValidationError requires a ZodError'
+            'ValidationError requires a string or ZodError'
         );
     });
 });

@@ -1,11 +1,10 @@
-const createGoogleCallbackController = (googleCallbackService) => {
+const createGoogleCallbackController = () => {
     return {
         get: async (req, res, next) => {
             try {
-                const result = await googleCallbackService(req);
                 res.status(200).json({
                     success: true,
-                    data: result
+                    user: req.user
                 });
             } catch (error) {
                 next(error)

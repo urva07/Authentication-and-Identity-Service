@@ -15,6 +15,13 @@ export default defineConfig([
     languageOptions: { sourceType: "commonjs" } 
   },
   {
+    files: ["tests/load/**/*.js"],
+    languageOptions: {
+      sourceType: "module",
+      globals: { __ENV: "readonly" }
+    }
+  },
+  {
     plugins: { security },
     rules: security.configs.recommended.rules,
   }

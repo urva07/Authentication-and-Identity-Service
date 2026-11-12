@@ -1,16 +1,17 @@
+const { describe, test, expect } = require('@jest/globals');
 const request = require('supertest');
 
-const app = require('../../src/app');
+const app = require('../../src/healthApp');
 
 describe('Health Check', () => {
-    test('GET /health should return 200', async () => {
-        const response = await request(app).get('/health');
+    test('GET /startup should return a successful startup response', async () => {
+        const response = await request(app).get('/startup');
 
         expect(response.statusCode).toBe(200);
 
         expect(response.body).toEqual({
             success: true,
-            message: 'Server is healthy'
+            message: 'Startup check passed'
         });
     });
 });

@@ -12,6 +12,8 @@ The model registry in `index.js` returns the `User`, `UserPassword`, and
 - `IdentityProvider` maps to `user_idps` and links a user to an OAuth provider's
   stable subject/user ID. A user can have multiple providers, and the provider
   plus provider user ID must be unique.
+  - `ActiveToken` stores allowed token identifiers and expiry for single-use
+    password resets. It maps to `active_tokens` and has no `updated_at` field.
 
 Model initialization does not create or alter tables. Use migrations to apply
 schema changes; the application intentionally does not call `sequelize.sync()`

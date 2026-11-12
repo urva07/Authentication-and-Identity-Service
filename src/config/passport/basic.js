@@ -1,8 +1,11 @@
 const LocalStrategy = require('passport-local').Strategy;
-const { getUserRepository } = require('#src/repositories/index.js');
+const { mysql: { getUserRepository } } = require('#src/repositories/index.js');
 const { verifyPassword } = require('#src/utils/hashPasswordAndVerify.js');
 const { AuthenticationError } = require('#src/errors/index.js');
 const logger = require('#src/utils/logger.js');
+const requestCoalescer = require('#src/lib/requestCoalescer.js')
+const createCoalescingKey = require('#src/lib/createCoalescingKey.js');
+
 
 const basicStrategy = new LocalStrategy(
     {
@@ -13,11 +16,20 @@ const basicStrategy = new LocalStrategy(
         logger.debug('Basic authentication attempt started');
         try {
             const userRepository = getUserRepository();
-            const user = await userRepository.findByEmailWithPassword(email);
+            const user = await requestCoalescer(
+                createCoalescingKey({
+                    db: "mysql",
+                    repository: "userRepository",
+                    method: "findByEmailWithPassword",
+                    args: [email]
+                }),
+                () => userRepository.findByEmailWithPassword(email),
+                logger
+            );
 
             if (!user) {
                 logger.debug('Basic authentication failed: user not found');
-                return done(new AuthenticationError('User not found'));
+                return done(new AuthenticationError('Invalid Username or Password'));
             }
 
             const hashedPassword = user.password?.passwordHash ?? user.password;
@@ -41,6 +53,7 @@ const basicStrategy = new LocalStrategy(
 
     }
 )
+
 
 module.exports = {
     basicStrategy

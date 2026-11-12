@@ -1,12 +1,17 @@
-const config = require('../../../config/config');
+const config = require('#src/config/config.js');
 const bcrypt = require('bcryptjs');
-const logger = require('#src/utils/logger.js');
-const { AuthenticationError } = require('../../../errors');
+const defaultLogger = require('#src/utils/logger.js');
+const { AuthenticationError } = require('#src/errors/index.js');
 const {
-    getUserRepository,
-    getUserPasswordRepository
-} = require('../../../repositories');
+    mysql: {
+        getUserRepository,
+        getUserPasswordRepository
+    }
+} = require('#src/repositories/index.js');
 const { generateRefreshToken, generateAccessToken } = require('#src/utils/jwt.js');
+const requestCoalescer = require('#src/lib/requestCoalescer.js');
+const createCoalescingKey = require('#src/lib/createCoalescingKey.js');
+
 
 const INVALID_CREDENTIALS = 'Invalid login credentials';
 
@@ -17,10 +22,7 @@ const createLoginService = ({
 } = {}) => {
     if (
         userRepository !== undefined && 
-        (
-            typeof userRepository?.findByEmail !== 'function' ||
-            typeof userRepository?.findByPhone !== 'function'
-        )
+        typeof userRepository?.findByEmail !== 'function'
     ) {
         throw new TypeError('Login service requires a user repository');
     }
@@ -38,16 +40,36 @@ const createLoginService = ({
         return userPasswordRepository || getUserPasswordRepository();
     };
 
-    const findUser = ({ contactType, email, phone }) => {
-        logger.debug('Looking up login user', { contactType });
-        return contactType === 'email'
-            ? resolveUserRepository().findByEmail(email.toLowerCase())
-            : resolveUserRepository().findByPhone(phone);
+    const findUser = (email, logger) => {
+        logger.debug('Looking up login user by email');
+        const repository = resolveUserRepository();
+        const args = [email.trim().toLowerCase()];
+        return requestCoalescer(
+            createCoalescingKey({
+                db: 'mysql',
+                repository: 'userRepository',
+                method: 'findByEmail',
+                args
+            }),
+            () => repository.findByEmail(...args),
+            logger
+        );
     };
 
-    const verifyPassword = async (userId, password) => {
+    const verifyPassword = async (userId, password, logger) => {
         logger.debug('Verifying login password', { userId: String(userId) });
-        const passwordCredential = await resolveUserPasswordRepository().findByUserId(userId);
+        const repository = resolveUserPasswordRepository();
+        const args = [userId];
+        const passwordCredential = await requestCoalescer(
+            createCoalescingKey({
+                db: 'mysql',
+                repository: 'userPasswordRepository',
+                method: 'findByUserId',
+                args
+            }),
+            () => repository.findByUserId(...args),
+            logger
+        );
 
         if (
             !passwordCredential ||
@@ -60,13 +82,17 @@ const createLoginService = ({
         logger.debug('Login password verification succeeded', { userId: String(userId) });
     };
 
-    const loginUser = async (credentials) => {
-        logger.debug('Login attempt started', { contactType: credentials.contactType });
+    const loginUser = async (credentials, logger = defaultLogger) => {
+        logger.debug('Login attempt started');
         if (!jwtSecret || Buffer.byteLength(jwtSecret) < 32) {
             throw new Error('Authentication requires a JWT secret of at least 32 bytes');
         }
 
-        const user = await findUser(credentials);
+        if (typeof credentials?.email !== 'string') {
+            throw new AuthenticationError(INVALID_CREDENTIALS);
+        }
+
+        const user = await findUser(credentials.email, logger);
         
         if (!user) {
             logger.debug('Login user lookup failed');
@@ -74,7 +100,7 @@ const createLoginService = ({
         }
 
         logger.debug('Login user found, verifying password', { userId: String(user.id) });
-        await verifyPassword(user.id, credentials.password);
+        await verifyPassword(user.id, credentials.password, logger);
 
         try {
             const accessToken = generateAccessToken(user.id);
@@ -101,5 +127,6 @@ const createLoginService = ({
 
     return { loginUser };
 };
+
 
 module.exports = createLoginService;

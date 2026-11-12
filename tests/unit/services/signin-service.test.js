@@ -1,8 +1,9 @@
+const { describe, afterAll, beforeEach, jest: jestApi, expect, test } = require('@jest/globals');
 const bcrypt = require('bcryptjs');
 const { createDecipheriv, createHash } = require('node:crypto');
 const { ConflictError } = require('../../../src/errors');
 const config = require('../../../src/config/config');
-const createSigninService = require('../../../src/services/signin.service');
+const createSigninService = require('../../../src/services/mainApp/auth/signin.service');
 
 describe('signin service', () => {
     const tokenSecret = 'b7f2c9a4e1d6380f5a0e9d3c7b1f6428c4e8a2f6d0b9137e1f5c8b3a6d2e9047';
@@ -12,24 +13,27 @@ describe('signin service', () => {
     const original = {
         secret: config.auth.basic.signinAes256GcmTokenSecret,
         apiBaseUrl: config.app.apiBaseUrl,
-        saltRounds: config.auth.basic.hashSaltRounds
+        saltRounds: config.auth.basic.hashSaltRounds,
+        tokenTtlSeconds: config.auth.basic.signinAes256GcmTokenTtlSeconds
     };
 
     afterAll(() => {
         config.auth.basic.signinAes256GcmTokenSecret = original.secret;
         config.app.apiBaseUrl = original.apiBaseUrl;
         config.auth.basic.hashSaltRounds = original.saltRounds;
+        config.auth.basic.signinAes256GcmTokenTtlSeconds = original.tokenTtlSeconds;
     });
 
     beforeEach(() => {
         config.auth.basic.signinAes256GcmTokenSecret = tokenSecret;
         config.app.apiBaseUrl = 'https://api.example.com';
         config.auth.basic.hashSaltRounds = 4;
+        config.auth.basic.signinAes256GcmTokenTtlSeconds = 600;
         userRepository = {
-            findByEmail: jest.fn().mockResolvedValue(null)
+            findByEmail: jestApi.fn().mockResolvedValue(null)
         };
         emailService = {
-            sendEmail: jest.fn().mockResolvedValue({ messageId: 'email-1' })
+            sendEmail: jestApi.fn().mockResolvedValue({ messageId: 'email-1' })
         };
         signinService = createSigninService({
             userRepository,
@@ -60,6 +64,7 @@ describe('signin service', () => {
     };
 
     test('checks for an existing email and emails an encrypted verification link', async () => {
+        const requestLogger = { debug: jestApi.fn() };
         const input = {
             contactType: 'email',
             email: 'ADA@example.com',
@@ -67,20 +72,22 @@ describe('signin service', () => {
             name: 'Ada Lovelace'
         };
 
-        const result = await signinService.signin(input);
+        const result = await signinService.signin(input, undefined, requestLogger);
 
         expect(userRepository.findByEmail).toHaveBeenCalledWith(
             'ada@example.com'
         );
+        expect(requestLogger.debug).toHaveBeenCalled();
         expect(result).toMatchObject({ success: true });
         expect(emailService.sendEmail).toHaveBeenCalledTimes(1);
+        expect(emailService.sendEmail.mock.calls[0][2]).toBe(requestLogger);
         const email = emailService.sendEmail.mock.calls[0][0];
         expect(email).toMatchObject({
             to: 'ada@example.com',
             subject: 'Verify your email address'
         });
         expect(email.text).toContain(
-            'https://api.example.com/api/v1/auth/verify-email?token='
+            'https://api.example.com/v1/auth/verify-email?token='
         );
         expect(email.html).toContain('Verify email address');
 
@@ -95,7 +102,7 @@ describe('signin service', () => {
         expect(await bcrypt.compare('test-password', tokenPayload.passwordHash))
             .toBe(true);
         expect(tokenPayload.passwordHash).not.toBe(input.password);
-        expect(tokenPayload.exp - tokenPayload.iat).toBe(24 * 60 * 60);
+        expect(tokenPayload.exp - tokenPayload.iat).toBe(600);
     });
 
     test('propagates email delivery errors', async () => {
@@ -121,7 +128,8 @@ describe('signin service', () => {
             password: 'test-password',
             name: 'Ada Lovelace'
         })).rejects.toMatchObject({
-            message: 'API_BASE_URL must be a valid HTTP(S) URL'
+            name: 'TypeError',
+            code: 'ERR_INVALID_URL'
         });
         expect(emailService.sendEmail).not.toHaveBeenCalled();
     });

@@ -1,9 +1,10 @@
+const { describe, test, jest: jestApi, expect } = require('@jest/globals');
 const { NotFoundError } = require('../../../src/errors');
 const notFoundMiddleware = require('../../../src/middlewares/notFound.middleware');
 
 describe('not-found middleware', () => {
     test('forwards a route-specific NotFoundError', () => {
-        const next = jest.fn();
+        const next = jestApi.fn();
 
         notFoundMiddleware(
             { method: 'GET', originalUrl: '/missing/path' },

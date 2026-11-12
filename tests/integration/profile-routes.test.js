@@ -1,47 +1,38 @@
-// const request = require('supertest');
-// const jwt = require('jsonwebtoken');
-// const config = require('../../src/config/config');
-// const app = require('../../src/app');
+const { describe, test, expect } = require('@jest/globals');
+const express = require('express');
+const request = require('supertest');
+const profileRoutes = require('../../src/routes/mainApp/v1/profile');
 
-// describe('Profile routes', () => {
-//     const originalJwtSecret = config.auth.jwt.jwtSecret;
-//     const testJwtSecret = 'test-secret-with-enough-entropy-for-signing';
+const app = express();
+app.use('/', profileRoutes);
+app.use((error, req, res, next) => {
+    if (res.headersSent) return next(error);
 
-//     beforeAll(() => {
-//         config.auth.jwt.jwtSecret = testJwtSecret;
-//     });
+    res.status(error.statusCode || 500).json({
+        success: false,
+        message: error.message
+    });
+});
 
-//     afterAll(() => {
-//         config.auth.jwt.jwtSecret = originalJwtSecret;
-//     });
+describe('Profile routes', () => {
+    const expectAuthenticationRequired = async (responsePromise) => {
+        const response = await responsePromise;
+        expect(response.statusCode).toBe(401);
+        expect(response.body).toMatchObject({
+            success: false,
+            message: 'Authentication failed'
+        });
+    };
 
-//     test.each([
-//         ['get', '/api/v1/profile/me'],
-//         ['patch', '/api/v1/profile/me'],
-//         ['get', '/api/v1/profile/42']
-//     ])('%s %s requires authorization', async (method, path) => {
-//             const response = await request(app)[method](path);
+    test('GET /me requires authorization', async () => {
+        await expectAuthenticationRequired(request(app).get('/me'));
+    });
 
-//             expect(response.statusCode).toBe(401);
-//             expect(response.body).toMatchObject({
-//                 success: false,
-//                 message: 'Authentication failed'
-//             });
-//         });
+    test('PATCH /me requires authorization', async () => {
+        await expectAuthenticationRequired(request(app).patch('/me'));
+    });
 
-//     test.each([
-//         ['get', '/api/v1/profile/me'],
-//         ['patch', '/api/v1/profile/me'],
-//         ['get', '/api/v1/profile/42']
-//     ])('%s %s is registered without business logic', async (method, path) => {
-//             const token = jwt.sign({ sub: '42' }, testJwtSecret);
-//             const response = await request(app)[method](path)
-//                 .set('Authorization', `Bearer ${token}`);
-
-//             expect(response.statusCode).toBe(501);
-//             expect(response.body).toEqual({
-//                 success: false,
-//                 message: 'Endpoint not implemented'
-//             });
-//         });
-// });
+    test('GET /:id requires authorization', async () => {
+        await expectAuthenticationRequired(request(app).get('/42'));
+    });
+});

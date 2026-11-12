@@ -1,6 +1,8 @@
 const bcrypt = require('bcrypt');
+const config = require('#src/config/config.js');
 
-const hashPassword = async (password, saltRounds = 10) => {
+
+const hashPassword = async (password, saltRounds = config.auth.basic.hashSaltRounds) => {
     return await bcrypt.hash(password, saltRounds);
 };
 
@@ -8,4 +10,8 @@ const verifyPassword = async (password, hashedPassword) => {
     return await bcrypt.compare(password, hashedPassword);;
 };
 
-module.exports = { hashPassword, verifyPassword };
+
+module.exports = { 
+    hashPassword, 
+    verifyPassword 
+};

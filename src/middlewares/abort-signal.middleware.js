@@ -1,13 +1,15 @@
 const { ExternalServiceTimeoutError } = require('../errors');
 const config = require('../config/config');
+let logger = require('#src/utils/logger.js');
 
 const abortSignalMiddleware = (req, res, next) => {
+    logger = req.log || logger;
     const controller = new AbortController();
     req.abortSignal = controller.signal;
 
     const abortForClientDisconnect = () => {
         if (!controller.signal.aborted) {
-            console.debug('[abort-signal] Client disconnected; aborting request');
+            logger.debug('[abort-signal] Client disconnected; aborting request');
             controller.abort(new Error('Client disconnected'));
         }
         cleanup();
@@ -21,6 +23,11 @@ const abortSignalMiddleware = (req, res, next) => {
         }
     };
 
+    const onResponseFinish = () => {
+        logger.debug('[abort-signal] Response finished; cleaning up');
+        cleanup();
+    };
+
     const cleanup = () => {
         clearTimeout(timeout);
         req.removeListener('aborted', abortForClientDisconnect);
@@ -30,11 +37,11 @@ const abortSignalMiddleware = (req, res, next) => {
 
     req.once('aborted', abortForClientDisconnect);
     res.once('close', onResponseClose);
-    res.once('finish', cleanup);
+    res.once('finish', onResponseFinish);
 
     const timeout = setTimeout(() => {
         if (!controller.signal.aborted) {
-            console.debug('[abort-signal] External service timeout; aborting request');
+            logger.debug('[abort-signal] External service timeout; aborting request');
             controller.abort(new ExternalServiceTimeoutError());
         }
         cleanup();

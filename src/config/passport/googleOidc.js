@@ -1,8 +1,18 @@
 const GoogleStrategy = require("passport-google-oidc");
 const config = require('../config');
-const { getUserRepository, getIdentityProviderRepository } = require('#src/repositories/index.js');
+const { mysql: { getUserRepository, getIdentityProviderRepository } } = require('#src/repositories/index.js');
 const { generateUUID } = require('#src/utils/userIdGenerator.js');
 const logger = require('#src/utils/logger.js');
+const { 
+    dbs: { 
+        mysql: { 
+            sequelize 
+        } 
+    } 
+} = require('#src/infrastructure/database/index.js');
+const requestCoalescer = require('#src/lib/requestCoalescer.js')
+const createCoalescingKey = require('#src/lib/createCoalescingKey.js');
+
 
 const googleOidcStrategy = new GoogleStrategy(
     {
@@ -15,7 +25,16 @@ const googleOidcStrategy = new GoogleStrategy(
         logger.debug('[Google OIDC] Authentication callback received.');
         try {
             const identityProviderRepository = getIdentityProviderRepository();
-            const existingUser = await identityProviderRepository.findByProviderIdentity('google', profile.id);
+            const existingUser = await requestCoalescer(
+                createCoalescingKey({
+                    db: "mysql",
+                    repository: "identityProviderRepository",
+                    method: "findByProviderIdentity",
+                    args: ['google', profile.id]
+                }),
+                () => identityProviderRepository.findByProviderIdentity('google', profile.id),
+                logger
+            );
             logger.debug(`[Google OIDC] Existing identity ${existingUser ? 'found' : 'not found'}.`);
 
             const user = {
@@ -28,7 +47,6 @@ const googleOidcStrategy = new GoogleStrategy(
             if (!existingUser) {
                 const userRepository = getUserRepository();
 
-                const sequelize = config.runtime.db_connections.mysql;
                 const t = await sequelize.transaction();
                 logger.debug('[Google OIDC] Started transaction to create user and identity.');
 
@@ -65,6 +83,7 @@ const googleOidcStrategy = new GoogleStrategy(
         }
     }
 );
+
 
 module.exports = {
     googleOidcStrategy

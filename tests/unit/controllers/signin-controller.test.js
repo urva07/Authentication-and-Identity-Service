@@ -1,4 +1,5 @@
-const createSigninController = require('#src/controllers/v1/signin.controller.js');
+const { describe, test, jest: jestApi, expect } = require('@jest/globals');
+const createSigninController = require('../../../src/controllers/mainApp/v1/auth/signin.controller');
 
 describe('signin controller', () => {
     test('passes validated input to the service and returns success', async () => {
@@ -13,21 +14,22 @@ describe('signin controller', () => {
             message: 'A verification link has been sent to your email.'
         };
         const signinService = {
-            signin: jest.fn().mockResolvedValue(result)
+            signin: jestApi.fn().mockResolvedValue(result)
         };
         const controller = createSigninController(signinService);
         const res = {
-            status: jest.fn().mockReturnThis(),
-            json: jest.fn()
+            status: jestApi.fn().mockReturnThis(),
+            json: jestApi.fn()
         };
-        const next = jest.fn();
+        const next = jestApi.fn();
 
         const abortSignal = new AbortController().signal;
+        const requestLogger = { debug: jestApi.fn() };
 
-        await controller.post({ body: input, abortSignal }, res, next);
+        await controller.post({ body: input, abortSignal, log: requestLogger }, res, next);
 
-        expect(signinService.signin).toHaveBeenCalledWith(input, abortSignal);
-        expect(res.status).toHaveBeenCalledWith(202);
+        expect(signinService.signin).toHaveBeenCalledWith(input, abortSignal, requestLogger);
+        expect(res.status).toHaveBeenCalledWith(200);
         expect(res.json).toHaveBeenCalledWith(result);
         expect(next).not.toHaveBeenCalled();
     });
@@ -35,14 +37,15 @@ describe('signin controller', () => {
     test('forwards service failures to error middleware', async () => {
         const error = new Error('database unavailable');
         const signinService = {
-            signin: jest.fn().mockRejectedValue(error)
+            signin: jestApi.fn().mockRejectedValue(error)
         };
         const controller = createSigninController(signinService);
-        const next = jest.fn();
+        const next = jestApi.fn();
+        const requestLogger = { debug: jestApi.fn() };
 
         await controller.post(
-            { body: {} },
-            { status: jest.fn(), json: jest.fn() },
+            { body: {}, log: requestLogger },
+            { status: jestApi.fn(), json: jestApi.fn() },
             next
         );
 

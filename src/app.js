@@ -1,11 +1,24 @@
 const config = require('./config/config');
 const express = require('express');
 const passport = require('passport');
-const { mainAppRoutes: { v1 } } = require('./routes');
+const { 
+    mainAppRoutes: { 
+        v1 
+    } 
+} = require('./routes');
 const middlewares = require('./middlewares');
-const { recordRequestMetrics } = require('./monitoring/metrics');
+const { recordRequestMetrics } = require('./monitoring');
 const logger = require('./utils/logger');
 const { initializePassport } = require('./config/passport');
+const { RedisStore } = require('connect-redis');
+const { 
+    dbs: 
+        { 
+            redis: { 
+                redisSessionClient
+            } 
+        } 
+} = require('#src/infrastructure/database/index.js');
 
 
 const app = express();
@@ -18,6 +31,7 @@ app.use(
         redact: [
             'req.headers.cookie',
             'req.headers.authorization',
+            'req.headers.x-ingress-auth-secret',
             'res.headers.set-cookie'
         ],
         customLogLevel: (req, res, error) => {
@@ -44,27 +58,29 @@ app.use(
 
 app.use(middlewares.helmet());
 
-app.use(
-    config.app.corsOrigin
-        ? middlewares.cors({
-            origin: config.app.corsOrigin,
-            credentials: true
-        })
-        : middlewares.cors()
-);
+app.use(middlewares.cors({
+    origin: config.services.frontend.baseUrl,
+    methods: "*",
+    allowedHeaders: "*",
+    exposedHeaders: "*",
+    credentials: true,
+    maxAge: 3600
+}));
 
 app.use(middlewares.rateLimiter({
-    windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 100 // limit each IP to 100 requests per windowMs
+    windowMs: 1 * 60 * 1000, // 1 minute
+    max: 200 // limit each IP to 100 requests per windowMs
 }));
 
 app.use(middlewares.json({
     limit: config.app.bodySizeLimit // limit the body to 100kb
 }));
+
 app.use(middlewares.urlencoded({ 
     extended: true,
     limit: config.app.bodySizeLimit // limit the body to 100kb
 }));
+
 app.use(middlewares.cookieParser());
 
 app.use(middlewares.session({
@@ -72,10 +88,9 @@ app.use(middlewares.session({
     resave: config.auth.session.resave,
     saveUninitialized: config.auth.session.saveUninitialized,
     rolling: config.auth.session.rolling,
-    // store: new (require('connect-redis').RedisStore)({
-    //     client: require('./infrastructure/database').redis,
-    //     ttl: config.auth.session.store.redis.ttl
-    // }),
+    store: new RedisStore({
+        client: redisSessionClient
+    }),
     cookie: {
         maxAge: config.auth.session.cookie.maxAge,
         httpOnly: config.auth.session.cookie.httpOnly,

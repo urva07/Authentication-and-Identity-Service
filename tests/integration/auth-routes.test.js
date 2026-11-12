@@ -1,51 +1,103 @@
+const { jest: jestApi, describe, test, expect } = require('@jest/globals');
 const request = require('supertest');
-const jwt = require('jsonwebtoken');
 const config = require('../../src/config/config');
 
-jest.mock('../../src/services', () => ({
-    'login.service': () => ({
-        loginUser: jest.fn().mockResolvedValue({
-            token: 'test-token',
-            user: { id: '1', email: 'ada@example.com' }
-        })
-    }),
-    'verify.service': () => ({
-        verifyUser: jest.fn().mockResolvedValue({
+jestApi.mock('../../src/services', () => ({
+    'mainApp.services': {
+        'auth.services': {
+            'passport-login.service': () => ({
+                loginUser: jestApi.fn().mockResolvedValue({
+                    accessToken: 'test-access-token',
+                    refreshToken: 'test-refresh-token',
+                    user: { id: '1', email: 'ada@example.com' }
+                })
+            }),
+            'verify.service': () => ({
+                verifyUser: jestApi.fn().mockResolvedValue({
+                    id: '1',
+                    email: 'ada@example.com'
+                })
+            }),
+            'signin.service': () => ({
+                signin: jestApi.fn().mockResolvedValue({
+                    success: true,
+                    message: 'Verification email sent'
+                })
+            }),
+            'verify-email.service': () => ({
+                verifyEmail: jestApi.fn().mockResolvedValue({
+                    id: '1',
+                    email: 'ada@example.com'
+                })
+            }),
+            'refresh.service': () => ({
+                refreshAccessToken: jestApi.fn().mockReturnValue('new-access-token')
+            }),
+            'logout.service': () => ({
+                logoutUser: jestApi.fn().mockReturnValue({ loggedOut: true })
+            }),
+            'forgot-password.service': () => ({
+                forgotPassword: jestApi.fn().mockResolvedValue({
+                    success: true,
+                    message: 'If an account exists, a reset link has been sent.'
+                })
+            }),
+            'change-password.service': () => ({
+                changePassword: jestApi.fn().mockResolvedValue({
+                    success: true,
+                    message: 'Password has been changed successfully.'
+                })
+            })
+        }
+    }
+}));
+
+jestApi.mock('../../src/repositories', () => ({
+    ...jestApi.requireActual('../../src/repositories'),
+    getUserRepository: () => ({
+        findByEmailWithPassword: jestApi.fn().mockResolvedValue({
             id: '1',
-            email: 'ada@example.com'
+            email: 'ada@example.com',
+            password: { passwordHash: 'hash' }
         })
-    }),
-    'signin.service': () => ({
-        signin: jest.fn().mockResolvedValue({ success: true })
-    }),
-    'refresh.service': () => ({
-        refreshAccessToken: jest.fn().mockReturnValue('new-access-token')
-    }),
-    'logout.service': () => ({
-        logoutUser: jest.fn().mockReturnValue({ loggedOut: true })
     })
+}));
+
+jestApi.mock('../../src/utils/hashPasswordAndVerify.js', () => ({
+    ...jestApi.requireActual('../../src/utils/hashPasswordAndVerify.js'),
+    verifyPassword: jestApi.fn().mockResolvedValue(true)
 }));
 
 const app = require('../../src/app');
 
 describe('Authentication routes', () => {
-    const originalJwtSecret = config.auth.jwt.jwtAccessTokenSecret;
-    const testJwtSecret = 'test-secret-with-enough-entropy-for-signing';
+    test('validates and processes a password reset', async () => {
+        const response = await request(app)
+            .post('/v1/auth/change-password')
+            .send({ token: 'signed-reset-token', newPassword: 'new-password' });
 
-    beforeAll(() => {
-        config.auth.jwt.jwtAccessTokenSecret = testJwtSecret;
+        expect(response.statusCode).toBe(200);
+        expect(response.body).toEqual({
+            success: true,
+            message: 'Password has been changed successfully.'
+        });
     });
 
-    afterAll(() => {
-        config.auth.jwt.jwtAccessTokenSecret = originalJwtSecret;
+    test('rejects invalid change-password input before the service', async () => {
+        const response = await request(app)
+            .post('/v1/auth/change-password')
+            .send({ token: 'signed-reset-token' });
+
+        expect(response.statusCode).toBe(400);
+        expect(response.body).toMatchObject({
+            success: false,
+            message: 'Validation failed'
+        });
     });
 
-    test.each([
-        ['POST', '/v1/auth/forgot-password'],
-        ['POST', '/v1/auth/change-password'],
-        ['GET', '/v1/auth/csrf'],
-        ['GET', '/v1/auth/verify-email/']
-    ])('%s %s is registered without controller logic', async (method, path) => {
+    test('GET /v1/auth/csrf is registered without controller logic', async () => {
+        const method = 'get';
+        const path = '/v1/auth/csrf';
         const response = await request(app)[method.toLowerCase()](path);
 
         expect(response.statusCode).toBe(501);
@@ -69,56 +121,57 @@ describe('Authentication routes', () => {
         const validResponse = await request(app)
             .post('/v1/auth/signin')
             .send({
-                contactType: 'email',
                 email: 'ada@example.com',
                 password: 'secret',
                 name: 'Ada Lovelace'
             });
 
-        expect(validResponse.statusCode).toBe(202);
-        expect(validResponse.body).toEqual({ success: true });
-        expect(validResponse.body).not.toHaveProperty('verificationToken');
-    });
-
-    test('requires authorization for POST /v1/auth/verify', async () => {
-        const response = await request(app).post('/v1/auth/verify');
-
-        expect(response.statusCode).toBe(401);
-        expect(response.body).toMatchObject({
-            success: false,
-            message: 'Authentication failed'
+        expect(validResponse.statusCode).toBe(200);
+        expect(validResponse.body).toEqual({
+            success: true,
+            message: 'Verification email sent'
         });
     });
 
-    test('refreshes an authenticated user access token', async () => {
-        const token = jwt.sign({ sub: '1' }, testJwtSecret);
+    test('validates and processes a password reset request', async () => {
         const response = await request(app)
-            .post('/v1/auth/refresh')
-            .set('Cookie', `auth_token=${token}`)
-            .send({ unused: true });
+            .post('/v1/auth/forgot-password')
+            .send({ email: 'ada@example.com' });
 
         expect(response.statusCode).toBe(200);
-        expect(response.body).toEqual({
-            success: true
-        });
-        expect(response.body).not.toHaveProperty('data.accessToken');
-        expect(response.headers['set-cookie'][0]).toContain(
-            'refresh_token=new-access-token'
-        );
-        expect(response.headers['set-cookie'][0]).not.toContain('HttpOnly');
+        expect(response.body).toMatchObject({ success: true });
+    });
+
+    test('requires a refresh-token cookie for POST /v1/auth/refresh', async () => {
+        const response = await request(app).post('/v1/auth/refresh');
+
+        expect(response.statusCode).toBe(401);
     });
 
     test('clears both token cookies on logout without requiring authentication', async () => {
         const response = await request(app).post('/v1/auth/logout');
+        const setCookies = response.headers['set-cookie'];
 
         expect(response.statusCode).toBe(200);
         expect(response.body).toEqual({ success: true });
-        expect(response.headers['set-cookie']).toEqual(
+        expect(setCookies).toEqual(
             expect.arrayContaining([
-                expect.stringContaining('auth_token='),
-                expect.stringContaining('refresh_token=')
+                expect.stringContaining(`${config.auth.jwt.cookieOptions.access.name}=`),
+                expect.stringContaining(`${config.auth.jwt.cookieOptions.refresh.name}=`)
             ])
         );
+    });
+
+    test('verifies an email when a token is provided', async () => {
+        const response = await request(app)
+            .get('/v1/auth/verify-email')
+            .query({ token: 'valid-token' });
+
+        expect(response.statusCode).toBe(201);
+        expect(response.body).toMatchObject({
+            success: true,
+            user: { id: '1', email: 'ada@example.com' }
+        });
     });
 
     test.each([
@@ -149,24 +202,23 @@ describe('Authentication routes', () => {
 
     test.each([
         {
-            contactType: 'email',
             email: 'ada@example.com',
-            password: 'secret'
-        },
-        {
-            contactType: 'phone',
-            phone: '+12025550123',
             password: 'secret'
         }
     ])('allows valid login body %j through validation', async (body) => {
         const response = await request(app).post('/v1/auth/login').send(body);
+        const setCookies = response.headers['set-cookie'];
 
         expect(response.statusCode).toBe(200);
         expect(response.body).toEqual({
             success: true,
             data: { user: { id: '1', email: 'ada@example.com' } }
         });
-        expect(response.headers['set-cookie'][0]).toContain('auth_token=test-token');
-        expect(response.headers['set-cookie'][0]).toContain('HttpOnly');
+        expect(setCookies).toEqual(
+            expect.arrayContaining([
+                expect.stringContaining(`${config.auth.jwt.cookieOptions.access.name}=test-access-token`),
+                expect.stringContaining(`${config.auth.jwt.cookieOptions.refresh.name}=test-refresh-token`)
+            ])
+        );
     });
 });

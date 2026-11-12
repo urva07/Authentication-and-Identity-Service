@@ -1,4 +1,5 @@
-const createEmailService = require('../../../src/services/email.service');
+const { describe, test, jest: jestApi, expect } = require('@jest/globals');
+const createEmailService = require('../../../src/services/mainApp/auth/email.service');
 
 describe('email service', () => {
     const emailConfig = {
@@ -10,8 +11,9 @@ describe('email service', () => {
 
     test('sends an email using the configured sender and transport', async () => {
         const result = { messageId: 'message-1' };
+        const requestLogger = { debug: jestApi.fn() };
         const transporter = {
-            sendMail: jest.fn().mockResolvedValue(result)
+            sendMail: jestApi.fn().mockResolvedValue(result)
         };
         const emailService = createEmailService({ transporter, emailConfig });
 
@@ -20,8 +22,9 @@ describe('email service', () => {
             subject: 'Verify your email',
             text: 'Your verification code is 123456',
             html: '<p>Your verification code is 123456</p>'
-        })).resolves.toBe(result);
+        }, undefined, requestLogger)).resolves.toBe(result);
 
+        expect(requestLogger.debug).toHaveBeenCalled();
         expect(transporter.sendMail).toHaveBeenCalledWith({
             from: 'noreply@example.com',
             to: 'user@example.com',
@@ -33,7 +36,7 @@ describe('email service', () => {
 
     test('requires recipient, subject, and message content', async () => {
         const emailService = createEmailService({
-            transporter: { sendMail: jest.fn() },
+            transporter: { sendMail: jestApi.fn() },
             emailConfig
         });
 
@@ -56,7 +59,7 @@ describe('email service', () => {
     test('forwards transport errors to the caller', async () => {
         const error = new Error('SMTP delivery failed');
         const transporter = {
-            sendMail: jest.fn().mockRejectedValue(error)
+            sendMail: jestApi.fn().mockRejectedValue(error)
         };
         const emailService = createEmailService({ transporter, emailConfig });
 

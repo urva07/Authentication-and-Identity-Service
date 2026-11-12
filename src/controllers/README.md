@@ -23,3 +23,11 @@ new access token.
 `logout.controller.js` clears the access-token and refresh-token cookies after
 the logout service succeeds. Logout clears the browser cookies only; it does
 not revoke already issued JWTs.
+
+`v1/profile/me.controller.js` handles `GET /profile/me` and `PATCH /profile/me`
+for the authenticated user. Identity comes from a verified ingress header;
+GET retrieves the current profile by user ID.
+`v1/profile/profileById.controller.js` handles
+`GET /profile/:id`; it returns the full profile for the requester's own ID and
+only public fields (id, names, photo) for other users. Both delegate to the
+injected profile service.

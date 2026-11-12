@@ -1,27 +1,43 @@
 const express = require('express');
-const { ["auth.middleware"]: authMiddleware } = require('../../../../middlewares');
+const validators = require('#src/validators/index.js');
+const {
+    "mainApp.versions": {
+        v1: {
+            "profile.controllers": controllers
+        }
+    }
+} = require('#src/controllers/index.js');
+const { 
+    "mainApp.services": { 
+        "profile.services": services 
+    } 
+} = require('#src/services/index.js');
+const profileIdentityMiddleware = require('#src/middlewares/profileIdentity.middleware.js');
+
 
 const router = express.Router();
 
-const notImplemented = (req, res) =>
-    res.status(501).json({
-        success: false,
-        message: 'Endpoint not implemented'
-    });
-
-router.use(authMiddleware('header', 'access'));
+const profileService = services['profile.service']();
+const meController = controllers['me.controller'](profileService);
+const profileByIdController = controllers['profile-by-id.controller'](profileService);
 
 router.get(
-    '/me', 
-    notImplemented
+    '/me',
+    profileIdentityMiddleware,
+    meController.get
 );
 router.patch(
-    '/me', 
-    notImplemented
+    '/me',
+    profileIdentityMiddleware,
+    validators['profile.validator'].patch,
+    meController.patch
 );
 router.get(
-    '/:id', 
-    notImplemented
+    '/:id',
+    profileIdentityMiddleware,
+    validators['profile.validator'].get,
+    profileByIdController.get
 );
+
 
 module.exports = router;

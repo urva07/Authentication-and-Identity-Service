@@ -1,4 +1,9 @@
-const { createCipheriv, createDecipheriv, randomBytes } = require('node:crypto');
+const { 
+    createCipheriv, 
+    createDecipheriv, 
+    randomBytes 
+} = require('node:crypto');
+
 
 const generateAes256GcmToken = (payload, encryptionKey) => {
     const iv = randomBytes(12);
@@ -36,4 +41,24 @@ const verifyAes256GcmToken = (token, encryptionKey) => {
     return JSON.parse(decrypted.toString('utf8'));
 };
 
-module.exports = { generateAes256GcmToken, verifyAes256GcmToken };
+const verifyAes256GcmTokenWithExpiry = (token, encryptionKey) => {
+    const payload = verifyAes256GcmToken(token, encryptionKey);
+    const hasValidShape =
+            typeof payload?.email === 'string' &&
+            typeof payload?.passwordHash === 'string' &&
+            typeof payload?.name === 'string' &&
+            typeof payload?.sub === 'string' &&
+            Number.isFinite(payload?.exp) &&
+            typeof payload?.jti === 'string';
+    if (!hasValidShape || !payload?.exp || payload.exp <= Math.floor(Date.now() / 1000)) {
+        return null;
+    }
+    return payload;
+};
+
+
+module.exports = { 
+    generateAes256GcmToken, 
+    verifyAes256GcmToken, 
+    verifyAes256GcmTokenWithExpiry 
+};

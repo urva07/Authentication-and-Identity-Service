@@ -1,7 +1,7 @@
-const config = require('../../../config/config');
-const { ExternalServiceTimeoutError } = require('../../../errors');
-const createMailClient = require('../../../integrations/mailClient');
-const logger = require('#src/utils/logger.js');
+const config = require('#src/config/config.js');
+const { ExternalServiceTimeoutError } = require('#src/errors/index.js');
+const createMailClient = require('#src/integrations/mailClient.js');
+const defaultLogger = require('#src/utils/logger.js');
 
 const createEmailService = ({ transporter, emailConfig = config.email } = {}) => {
     if (
@@ -17,7 +17,7 @@ const createEmailService = ({ transporter, emailConfig = config.email } = {}) =>
 
     const emailTransport = transporter || createMailClient(emailConfig);
 
-    const sendEmail = async ({ to, subject, text, html }, abortSignal) => {
+    const sendEmail = async ({ to, subject, text, html }, abortSignal, logger = defaultLogger) => {
         logger.debug('Validating email request');
 
         if (typeof to !== 'string' || to.trim().length === 0) {

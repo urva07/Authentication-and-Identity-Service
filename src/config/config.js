@@ -1,5 +1,6 @@
 require('dotenv').config({ quiet: true });
 
+
 const mongo = {
     username: process.env.MONGO_USERNAME,
     password: process.env.MONGO_PASSWORD,
@@ -18,41 +19,53 @@ const mysql = {
 };
 
 const redis = {
-    username: process.env.REDIS_USERNAME,
-    password: process.env.REDIS_PASSWORD,
-    host: process.env.REDIS_HOST,
-    port: Number(process.env.REDIS_PORT) || 6379
+    sessionRedis: {
+        host: process.env.SESSION_REDIS_HOST,
+        port: Number(process.env.SESSION_REDIS_PORT) || 6379,
+        username: process.env.SESSION_REDIS_USERNAME,
+        password: process.env.SESSION_REDIS_PASSWORD,
+        database: Number(process.env.SESSION_REDIS_DATABASE) || 0
+    },
+    userCacheRedis: {
+        host: process.env.USER_CACHE_REDIS_HOST,
+        port: Number(process.env.USER_CACHE_REDIS_PORT) || 6379,
+        username: process.env.USER_CACHE_REDIS_USERNAME,
+        password: process.env.USER_CACHE_REDIS_PASSWORD,
+        database: Number(process.env.USER_CACHE_REDIS_DATABASE) || 0
+    },
+    rateLimitRedis: {
+        host: process.env.RATE_LIMIT_REDIS_HOST,
+        port: Number(process.env.RATE_LIMIT_REDIS_PORT) || 6379,
+        username: process.env.RATE_LIMIT_REDIS_USERNAME,
+        password: process.env.RATE_LIMIT_REDIS_PASSWORD,
+        database: Number(process.env.RATE_LIMIT_REDIS_DATABASE) || 0
+    }
 };
 
-const externalApiTimeoutMs = Number(
-    process.env.EXTERNAL_API_TIMEOUT_MS || 10000
-);
-if (!Number.isInteger(externalApiTimeoutMs) || externalApiTimeoutMs <= 0) {
-    throw new Error('EXTERNAL_API_TIMEOUT_MS must be a positive integer');
-}
 
 module.exports = {
-    runtime: {
-        db_connections: {}
-    },
     healthApp: {
         port: Number(process.env.HEALTH_APP_PORT) || 3001
     },
     app: {
-        environment: process.env.NODE_ENV || 'development',
+        environment: process.env.environment || 'development',
         domain: process.env.DOMAIN || 'localhost',
         port: Number(process.env.PORT) || 3000,
         apiBaseUrl: process.env.API_BASE_URL || `http://localhost:${Number(process.env.PORT) || 3000}`,
         corsOrigin: process.env.CORS_ORIGIN,
-        externalApiTimeoutMs,
+        externalApiTimeoutMs: Number(process.env.EXTERNAL_API_TIMEOUT_MS) || 15000,
         totalReqResCycleTimeOutMs: Number(process.env.TOTAL_REQ_RES_CYCLE_TIMEOUT_MS) || 15000,
         connectionKeepAliveTimeoutMs: Number(process.env.CONNECTION_KEEP_ALIVE_TIMEOUT_MS) || 20000,
         connectionInactivityTimeoutMs: Number(process.env.CONNECTION_INACTIVITY_TIMEOUT_MS) || 10000,
         reqHeadersTimeoutMs: Number(process.env.REQ_HEADERS_TIMEOUT_MS) || 5000,
         reqTimeoutMs: Number(process.env.REQ_TIMEOUT_MS) || 20000,
         maxConnections: Number(process.env.MAX_CONNECTIONS) || 1000,
-        bodySizeLimit: process.env.BODY_SIZE_LIMIT || '100kb'
-
+        bodySizeLimit: process.env.BODY_SIZE_LIMIT || '10kb'
+    },
+    services: {
+        frontend: {
+            baseUrl: process.env.FRONTEND_BASE_URL || `http://localhost:${Number(process.env.PORT) || 3000}`
+        }
     },
     database: {
         mongo,
@@ -63,6 +76,9 @@ module.exports = {
         database: 0
     },
     auth: {
+        ingress: {
+            sharedSecret: process.env.INGRESS_SHARED_SECRET
+        },
         session: {
             secret: process.env.SESSION_SECRET,
             resave: process.env.SESSION_RESAVE === 'true',
@@ -88,13 +104,29 @@ module.exports = {
             jwtSecret: process.env.JWT_SECRET,
             jwtRefreshTokenExpiration: process.env.JWT_REFRESH_TOKEN_EXPIRATION || '7d',
             jwtAccessTokenExpiration: process.env.JWT_ACCESS_TOKEN_EXPIRATION || '24h',
-            jwtAccessTokenCookieExpirationMili: process.env.JWT_ACCESS_TOKEN_COOKIE_EXPIRATION_MILI,
-            jwtRefreshTokenCookieExpirationMili: process.env.JWT_REFRESH_TOKEN_COOKIE_EXPIRATION_MILI,
             jwtRefreshTokenSecret: process.env.JWT_REFRESH_TOKEN_SECRET,
             jwtAccessTokenSecret: process.env.JWT_ACCESS_TOKEN_SECRET,
+            jwtPasswordResetTokenSecret: process.env.JWT_PASSWORD_RESET_TOKEN_SECRET,
+            jwtPasswordResetTokenTtlSeconds: Number(process.env.JWT_PASSWORD_RESET_TOKEN_TTL_SECONDS) || 900,
             jwtAlgorithm: process.env.JWT_ALGORITHM || 'HS256',
-            jwtAccessTokenCookieName: process.env.JWT_ACCESS_TOKEN_COOKIE_NAME || 'accessToken',
-            jwtRefreshTokenCookieName: process.env.JWT_REFRESH_TOKEN_COOKIE_NAME || 'refreshToken'
+            cookieOptions: {
+                refresh: {
+                    name: process.env.JWT_REFRESH_TOKEN_COOKIE_NAME || 'refreshToken',
+                    httpOnly: process.env.JWT_REFRESH_TOKEN_COOKIE_HTTP_ONLY !== 'false',
+                    secure: process.env.NODE_ENV === 'production' && process.env.JWT_REFRESH_TOKEN_COOKIE_SECURE === 'true',
+                    sameSite: process.env.JWT_REFRESH_TOKEN_COOKIE_SAME_SITE || 'strict',
+                    path: process.env.JWT_REFRESH_TOKEN_COOKIE_PATH || '/v1/auth/refresh',
+                    maxAge: process.env.JWT_REFRESH_TOKEN_COOKIE_EXPIRATION_MILI,
+                },
+                access: {
+                    name: process.env.JWT_ACCESS_TOKEN_COOKIE_NAME || 'accessToken',
+                    httpOnly: process.env.JWT_ACCESS_TOKEN_COOKIE_HTTP_ONLY || false,
+                    secure: process.env.NODE_ENV === 'production' && process.env.JWT_ACCESS_TOKEN_COOKIE_SECURE === 'true',
+                    sameSite: process.env.JWT_ACCESS_TOKEN_COOKIE_SAME_SITE || 'lax',
+                    path: process.env.JWT_ACCESS_TOKEN_COOKIE_PATH || '/',
+                    maxAge: process.env.JWT_ACCESS_TOKEN_COOKIE_EXPIRATION_MILI,
+                }
+            }
         },
         basic: {
             hashSaltRounds: Number(process.env.BASIC_HASH_SALT_ROUNDS) || 10,

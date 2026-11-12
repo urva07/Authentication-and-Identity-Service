@@ -1,10 +1,31 @@
 const app = require('./app');
-const config = require('./config/config');
-const initializeConnections = require('#src/infrastructure/database/index.js');
-const { configureRepositories } = require('./repositories');
-const logger = require('./utils/logger');
-const { destroyIdleSockets, openSockets } = require('./lib/destroyIdleSockets');
 const healthApp = require('./healthApp');
+const config = require('./config/config');
+const { 
+    initializeConnections, 
+    dbs: { 
+        mysql,
+        redis,
+    } 
+} = require('#src/infrastructure/database/index.js');
+const { 
+    mysql: { 
+        configureRepositories: configureMysqlRepositories 
+    },
+    redis: {
+        userCache: {
+            configureRepositories: configureUserCacheRedisRepositories
+        }
+    }
+} = require('./repositories');
+const logger = require('./utils/logger');
+const { 
+    openSockets: { 
+        destroyIdleSockets, 
+        openSockets 
+    } 
+} = require('./lib');
+
 
 const PORT = config.app.port;
 
@@ -25,8 +46,7 @@ const startServer = async () => {
             () => {
                 logger.info(
                     {
-                        port: config.healthApp.port,
-                        path: '/startup'
+                        port: config.healthApp.port
                     },
                     'Health application server started'
                 );
@@ -38,8 +58,9 @@ const startServer = async () => {
     });
 
     connections = await initializeConnections();
-    config.runtime.db_connections = connections;
-    configureRepositories(connections.mysql.models);
+    configureMysqlRepositories(mysql.models);
+    configureUserCacheRedisRepositories(redis.redisCacheClient);
+
     
     server = await new Promise((resolve, reject) => {
         const listeningServer = app.listen(PORT, () => {
@@ -150,6 +171,7 @@ const shutdown = async (signal) => {
         // Safety net: force-close any socket still open after a grace period
         const forceCloseTimer = setTimeout(() => {
             server.closeAllConnections();
+            healthServer?.closeAllConnections();
             logger.warn('Force-closing all remaining connections as the grace period has expired');
         }, 30000);
         forceCloseTimer.unref();
@@ -194,9 +216,19 @@ process.on('SIGTERM', () => {
         process.exitCode = 1;
     });
 });
+
 process.on('SIGINT', () => {
     shutdown('SIGINT').catch((error) => {
         logger.error({ err: error }, 'Shutdown failed');
+        process.exitCode = 1;
+    });
+});
+
+process.on('uncaughtException', (error) => {
+    logger.error({ err: error }, 'Uncaught exception');
+    process.exitCode = 1;
+    shutdown('uncaught exception').catch((shutdownError) => {
+        logger.error({ err: shutdownError }, 'Shutdown failed');
         process.exitCode = 1;
     });
 });

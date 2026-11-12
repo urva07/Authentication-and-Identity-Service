@@ -1,28 +1,35 @@
-const createLogoutController = require('#src/controllers/v1/logout.controller.js');
+const { describe, test, jest: jestApi, expect } = require('@jest/globals');
+const config = require('../../../src/config/config');
+const createLogoutController = require('../../../src/controllers/mainApp/v1/auth/logout.controller');
 
 describe('logout controller', () => {
     test('clears access and refresh token cookies after logout service succeeds', async () => {
         const logoutService = {
-            logoutUser: jest.fn().mockReturnValue({ loggedOut: true })
+            logoutUser: jestApi.fn().mockReturnValue({ loggedOut: true })
         };
         const controller = createLogoutController(logoutService);
         const res = {
-            clearCookie: jest.fn(),
-            status: jest.fn().mockReturnThis(),
-            json: jest.fn()
+            clearCookie: jestApi.fn(),
+            status: jestApi.fn().mockReturnThis(),
+            json: jestApi.fn()
         };
-        const next = jest.fn();
+        const next = jestApi.fn();
+        const requestLogger = { debug: jestApi.fn() };
 
-        await controller.post({}, res, next);
+        await controller.post({ log: requestLogger }, res, next);
 
-        expect(logoutService.logoutUser).toHaveBeenCalledWith();
+        expect(logoutService.logoutUser).toHaveBeenCalledWith(requestLogger);
         expect(res.clearCookie).toHaveBeenCalledWith(
-            'auth_token',
-            expect.objectContaining({ path: '/' })
+            config.auth.jwt.cookieOptions.access.name,
+            expect.objectContaining({
+                path: config.auth.jwt.cookieOptions.access.path
+            })
         );
         expect(res.clearCookie).toHaveBeenCalledWith(
-            'refresh_token',
-            expect.objectContaining({ path: '/' })
+            config.auth.jwt.cookieOptions.refresh.name,
+            expect.objectContaining({
+                path: config.auth.jwt.cookieOptions.refresh.path
+            })
         );
         expect(res.status).toHaveBeenCalledWith(200);
         expect(res.json).toHaveBeenCalledWith({ success: true });
@@ -32,13 +39,14 @@ describe('logout controller', () => {
     test('forwards logout service errors to error middleware', async () => {
         const error = new Error('logout failed');
         const controller = createLogoutController({
-            logoutUser: jest.fn().mockRejectedValue(error)
+            logoutUser: jestApi.fn().mockRejectedValue(error)
         });
-        const next = jest.fn();
+        const next = jestApi.fn();
+        const requestLogger = { debug: jestApi.fn() };
 
         await controller.post(
-            {},
-            { clearCookie: jest.fn(), status: jest.fn(), json: jest.fn() },
+            { log: requestLogger },
+            { clearCookie: jestApi.fn(), status: jestApi.fn(), json: jestApi.fn() },
             next
         );
 

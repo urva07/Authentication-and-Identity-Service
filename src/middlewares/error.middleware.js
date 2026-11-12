@@ -1,5 +1,6 @@
 const { AppError, PayloadTooLargeError } = require('../errors');
 
+
 const INTERNAL_SERVER_ERROR_MESSAGE = 'Internal Server Error';
 
 module.exports = (err, req, res, next) => {
@@ -9,6 +10,7 @@ module.exports = (err, req, res, next) => {
 
     const isAppError = err instanceof AppError;
     const statusCode = isAppError ? err.statusCode : 500;
+
     // pino-http logs the request once the response finishes and reports res.err
     res.err =
         err.name === 'ValidationError' && Array.isArray(err.errors)

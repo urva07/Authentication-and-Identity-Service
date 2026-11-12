@@ -1,5 +1,6 @@
-jest.mock('nodemailer', () => ({
-    createTransport: jest.fn()
+const { jest: jestApi, describe, beforeEach, test, expect } = require('@jest/globals');
+jestApi.mock('nodemailer', () => ({
+    createTransport: jestApi.fn()
 }));
 
 const nodemailer = require('nodemailer');
@@ -11,7 +12,7 @@ describe('mail configuration', () => {
     });
 
     test('creates an unauthenticated SMTP transport', () => {
-        const transport = { sendMail: jest.fn() };
+        const transport = { sendMail: jestApi.fn() };
         nodemailer.createTransport.mockReturnValue(transport);
 
         const result = createMailClient({
@@ -24,7 +25,11 @@ describe('mail configuration', () => {
         expect(nodemailer.createTransport).toHaveBeenCalledWith({
             host: 'smtp.example.com',
             port: 587,
-            secure: false
+            secure: false,
+            auth: {
+                user: undefined,
+                pass: undefined
+            }
         });
     });
 

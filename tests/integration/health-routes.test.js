@@ -1,9 +1,10 @@
+const { describe, test, expect } = require('@jest/globals');
 const request = require('supertest');
 
-const app = require('../../src/app');
+const app = require('../../src/healthApp');
 
 describe('Health probe routes', () => {
-    test.each(['/health/live', '/health/ready'])(
+    test.each(['/live', '/ready'])(
         'GET %s is registered without probe logic',
         async (path) => {
             const response = await request(app).get(path);
@@ -11,13 +12,13 @@ describe('Health probe routes', () => {
             expect(response.statusCode).toBe(501);
             expect(response.body).toEqual({
                 success: false,
-                message: 'Health check not implemented'
+                message: 'Not implemented'
             });
         }
     );
 
-    test('GET /health/metrics returns Prometheus process metrics', async () => {
-        const response = await request(app).get('/health/metrics');
+    test('GET /metrics returns Prometheus process metrics', async () => {
+        const response = await request(app).get('/metrics');
 
         expect(response.statusCode).toBe(200);
         expect(response.headers['content-type']).toMatch(

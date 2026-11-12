@@ -1,12 +1,25 @@
-const config = require('../../../config/config');
-const { AppError, ConflictError } = require('../../../errors');
+const config = require('#src/config/config.js');
+const { ValidationError } = require('#src/errors/index.js');
 const { generateAccessToken, generateRefreshToken } = require('#src/utils/jwt.js');
-const {
-    getUserRepository,
-    getUserPasswordRepository
-} = require('../../../repositories');
-const { verifyAes256GcmToken } = require('#src/utils/aes256GcmToken.js');
+const { 
+    mysql: { 
+        getUserRepository, 
+        getUserPasswordRepository 
+    } 
+} = require('#src/repositories/index.js');
+const { verifyAes256GcmTokenWithExpiry } = require('#src/utils/aes256GcmToken.js');
 const { createSigninTokenKey } = require('#src/utils/signinTokenKey.js');
+let { 
+    dbs: { 
+        mysql: { 
+            sequelize
+        } 
+    } 
+} = require('#src/infrastructure/database/index.js');
+const defaultLogger = require('#src/utils/logger.js');
+const requestCoalescer = require('#src/lib/requestCoalescer.js')
+const createCoalescingKey = require('#src/lib/createCoalescingKey.js');
+
 
 const INVALID_LINK_MESSAGE = 'Invalid or expired verification link';
 const NAME_MAX_LENGTH = 100;
@@ -14,12 +27,12 @@ const NAME_MAX_LENGTH = 100;
 const createVerifyEmailService = ({
     userRepository,
     userPasswordRepository,
-    sequelize
+    mysqlSequelizeClient
 } = {}) => {
     if (
         userRepository !== undefined &&
         (
-            typeof userRepository?.findByEmail !== 'function' ||
+            typeof userRepository?.findById !== 'function' ||
             typeof userRepository?.create !== 'function'
         )
     ) {
@@ -38,21 +51,9 @@ const createVerifyEmailService = ({
             config.auth.basic.signinAes256GcmTokenSecret
         );
 
-        let payload;
-        try {
-            payload = verifyAes256GcmToken(token, encryptionKey);
-        } catch (error) {
-            throw new AppError(INVALID_LINK_MESSAGE, 400);
-        }
-
-        const hasValidShape =
-            typeof payload?.email === 'string' &&
-            typeof payload?.passwordHash === 'string' &&
-            typeof payload?.name === 'string' &&
-            Number.isFinite(payload?.exp);
-
-        if (!hasValidShape || payload.exp <= Math.floor(Date.now() / 1000)) {
-            throw new AppError(INVALID_LINK_MESSAGE, 400);
+        const payload = verifyAes256GcmTokenWithExpiry(token, encryptionKey);
+        if (!payload) {
+            throw new ValidationError(INVALID_LINK_MESSAGE);
         }
 
         return payload;
@@ -67,48 +68,84 @@ const createVerifyEmailService = ({
         };
     };
 
-    const verifyEmail = async (token) => {
-        const { email, passwordHash, name } = decodeToken(token);
+    const verifyEmail = async (token, logger = defaultLogger) => {
+        logger.debug('Email verification started');
+        const { email, passwordHash, name, sub } = decodeToken(token);
         const users = userRepository || getUserRepository();
         const passwords = userPasswordRepository || getUserPasswordRepository();
+        sequelize = mysqlSequelizeClient || sequelize;
 
-        if (await users.findByEmail(email)) {
-            throw new ConflictError('An account with this email already exists');
+         const existingUser = await requestCoalescer(
+            createCoalescingKey({
+                db: "mysql",
+                repository: "userRepository",
+                method: "findById",
+                args: [sub]
+            }),
+            () => users.findById(sub),
+            logger
+        );
+
+        if (existingUser) {
+            if (existingUser.email === email) {
+                defaultLogger.debug('A reuse of valid token is detected.');
+
+                return {
+                    conflict: true,
+                    response: {
+                        success: true,
+                        message: 'An account with this ID already exists.'
+                    }
+                }
+            }
+
+            defaultLogger.debug('A reuse of valid token is detected with an old email.');
+            throw new ValidationError(INVALID_LINK_MESSAGE);
         }
 
-        const connection = sequelize || config.runtime.db_connections.mysql;
         const { firstName, lastName } = splitName(name);
 
         try {
-            const user = await connection.transaction(async (transaction) => {
+            await sequelize.transaction(async (transaction) => {
                 const createdUser = await users.create(
-                    { email, firstName, lastName },
+                    { id: sub, email, firstName, lastName },
                     { transaction }
                 );
 
                 await passwords.create(
-                    { userId: createdUser.id, passwordHash },
+                    { userId: sub, passwordHash },
                     { transaction }
                 );
 
                 return createdUser;
             });
 
-            const accessToken = generateAccessToken(user.id);
-            
-            const refreshToken = generateRefreshToken(user.id);
+            const accessToken = generateAccessToken(sub);
+
+            const refreshToken = generateRefreshToken(sub);
+
+            logger.debug('Email verification completed', { userId: sub });
 
             return {
-                id: String(user.id),
-                email: user.email,
-                firstName: user.firstName,
-                lastName: user.lastName,
+                conflict: false,
+                response: {
+                    success: true,
+                    message: 'Email verification successful.'
+                },
                 accessToken,
                 refreshToken
             };
         } catch (error) {
             if (error?.name === 'SequelizeUniqueConstraintError') {
-                throw new ConflictError('An account with this email already exists');
+                defaultLogger.debug('A conflict of user has been encountered after verifying the user doesnot exist while creating it during database transaction.')
+
+                return {
+                    conflict: true,
+                    response: {
+                        success: false,
+                        message: 'An account with this ID already exists.'
+                    }
+                };
             }
 
             throw error;
@@ -117,5 +154,6 @@ const createVerifyEmailService = ({
 
     return { verifyEmail };
 };
+
 
 module.exports = createVerifyEmailService;

@@ -1,7 +1,8 @@
+const { describe, afterEach, test, expect, jest: jestApi } = require('@jest/globals');
 const jwt = require('jsonwebtoken');
 const config = require('../../../src/config/config');
 const { AuthenticationError, AppError } = require('../../../src/errors');
-const createRefreshService = require('../../../src/services/refresh.service');
+const createRefreshService = require('../../../src/services/mainApp/auth/refresh.service');
 
 describe('refresh service', () => {
     const jwtSecret = 'test-secret-with-enough-entropy-for-signing';
@@ -14,12 +15,14 @@ describe('refresh service', () => {
     test('creates an access token for the authenticated user', () => {
         config.auth.jwt.jwtAccessTokenSecret = jwtSecret;
         const refreshService = createRefreshService();
+        const requestLogger = { debug: jestApi.fn() };
 
         const accessToken = refreshService.refreshAccessToken({
             id: '42',
             email: 'ada@example.com'
-        });
+        }, requestLogger);
 
+        expect(requestLogger.debug).toHaveBeenCalled();
         expect(jwt.verify(accessToken, jwtSecret)).toMatchObject({
             sub: '42'
         });

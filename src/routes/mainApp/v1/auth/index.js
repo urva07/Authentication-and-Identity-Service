@@ -1,6 +1,12 @@
 const express = require('express');
 const validators = require('#src/validators/index.js');
-const { "mainApp.versions": { v1: { "auth.controllers": controllers } } } = require('#src/controllers/index.js');
+const { 
+    "mainApp.versions": { 
+        v1: { 
+            "auth.controllers": controllers 
+        } 
+    } 
+} = require('#src/controllers/index.js');
 const middlewares = require('#src/middlewares/index.js');
 const { "mainApp.services": { "auth.services": services } }= require('#src/services/index.js');
 const oidcRouter = require('./OIDC');
@@ -17,7 +23,7 @@ const notImplemented = (req, res) => {
 const router = express.Router();
 
 const loginController = controllers['login.controller'](
-    services['login.service']()
+    services['passport-login.service']()
 );
 const signinController = controllers['signin.controller'](
     services['signin.service']()
@@ -34,16 +40,23 @@ const refreshController = controllers['refresh.controller'](
 const logoutController = controllers['logout.controller'](
     services['logout.service']()
 );
+const forgotPasswordController = controllers['forgot-password.controller'](
+    services['forgot-password.service']()
+);
+const changePasswordController = controllers['change-password.controller'](
+    services['change-password.service']()
+);
 
 router.post(
     '/verify',
-    middlewares['passportJWTAccessFromHeader.middleware'], 
     validators['verify.validator'].post, 
+    middlewares['passportJwt.middleware']({ type: 'access', source: 'header' }), 
     verifyController.post
 );
 router.post(
     '/login', 
     validators['login.validator'].post, 
+    passport.authenticate('basic', { session: false }),
     loginController.post
 );
 router.post(
@@ -53,8 +66,8 @@ router.post(
 );
 router.post(
     '/refresh', 
-    middlewares['auth.middleware']('cookie', 'refresh'), 
     validators['refresh.validator'].post, 
+    middlewares['passportJwt.middleware']({ type: 'refresh', source: 'cookie' }), 
     refreshController.post
 );
 router.post(
@@ -63,11 +76,13 @@ router.post(
 );
 router.post(
     '/forgot-password', 
-    notImplemented
+    validators['forgot-password.validator'].post,
+    forgotPasswordController.post
 );
 router.post(
     '/change-password', 
-    notImplemented
+    validators['change-password.validator'].post,
+    changePasswordController.post
 );
 router.get(
     '/csrf', 

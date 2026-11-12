@@ -1,17 +1,17 @@
+const { describe, test, jest: jestApi, expect } = require('@jest/globals');
 const signinValidator = require('../../../src/validators/signin.validator');
 const { ValidationError } = require('../../../src/errors');
 
 describe('signin POST validator', () => {
     test.each([
         {
-            contactType: 'email',
             email: 'ada@example.com',
             password: 'secret',
             name: 'Ada Lovelace'
         }
     ])('accepts valid credentials: %j', (body) => {
         const req = { body };
-        const next = jest.fn();
+        const next = jestApi.fn();
 
         signinValidator.post(req, {}, next);
 
@@ -53,7 +53,7 @@ describe('signin POST validator', () => {
             name: 'Ada'
         }
     ])('rejects invalid sign-in credentials: %j', (body) => {
-        const next = jest.fn();
+        const next = jestApi.fn();
 
         signinValidator.post({ body }, {}, next);
 

@@ -1,13 +1,13 @@
 const jwtClient = require('jsonwebtoken');
-const { AppError, AuthenticationError } = require('../../../errors');
-const config = require('../../../config/config');
-const logger = require('#src/utils/logger.js');
+const { AppError, AuthenticationError } = require('#src/errors/index.js');
+const config = require('#src/config/config.js');
+const defaultLogger = require('#src/utils/logger.js');
 
 const createRefreshService = ({
     jwt = jwtClient,
     jwtSecret = config.auth.jwt.jwtAccessTokenSecret
 } = {}) => ({
-    refreshAccessToken: (user) => {
+    refreshAccessToken: (user, logger = defaultLogger) => {
         logger.debug('Refreshing access token');
 
         if (!user || user.id === undefined || user.id === null) {

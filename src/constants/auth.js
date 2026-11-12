@@ -4,5 +4,6 @@ module.exports = {
     AUTH_COOKIE_NAME: 'auth_token',
     REFRESH_TOKEN_COOKIE_NAME: 'refresh_token',
     TOKEN_EXPIRY_SECONDS,
+    PASSWORD_RESET_PURPOSE: 'password-reset',
     TOKEN_EXPIRY_MILLISECONDS: TOKEN_EXPIRY_SECONDS * 1000
 };

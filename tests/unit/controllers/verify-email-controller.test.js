@@ -1,23 +1,32 @@
-const createVerifyEmailController = require('#src/controllers/mainApp/v1/auth/verify-email.controller.js');
+const { describe, jest: jestApi, test, expect } = require('@jest/globals');
+const createVerifyEmailController = require('../../../src/controllers/mainApp/v1/auth/verifyEmail.controller');
 
 describe('verify email controller', () => {
     const createResponse = () => ({
-        status: jest.fn().mockReturnThis(),
-        json: jest.fn()
+        status: jestApi.fn().mockReturnThis(),
+        json: jestApi.fn()
     });
 
     test('passes the query token to the service and returns the created user', async () => {
         const user = { id: 'user-id', email: 'ada@example.com' };
         const verifyEmailService = {
-            verifyEmail: jest.fn().mockResolvedValue(user)
+            verifyEmail: jestApi.fn().mockResolvedValue(user)
         };
         const controller = createVerifyEmailController(verifyEmailService);
         const res = createResponse();
-        const next = jest.fn();
+        const next = jestApi.fn();
+        const requestLogger = { debug: jestApi.fn() };
 
-        await controller.get({ query: { token: 'v1.token' } }, res, next);
+        await controller.get(
+            { query: { token: 'v1.token' }, log: requestLogger },
+            res,
+            next
+        );
 
-        expect(verifyEmailService.verifyEmail).toHaveBeenCalledWith('v1.token');
+        expect(verifyEmailService.verifyEmail).toHaveBeenCalledWith(
+            'v1.token',
+            requestLogger
+        );
         expect(res.status).toHaveBeenCalledWith(201);
         expect(res.json).toHaveBeenCalledWith({
             success: true,
@@ -30,13 +39,18 @@ describe('verify email controller', () => {
     test('forwards service errors to error middleware', async () => {
         const error = new Error('verification failed');
         const verifyEmailService = {
-            verifyEmail: jest.fn().mockRejectedValue(error)
+            verifyEmail: jestApi.fn().mockRejectedValue(error)
         };
         const controller = createVerifyEmailController(verifyEmailService);
         const res = createResponse();
-        const next = jest.fn();
+        const next = jestApi.fn();
+        const requestLogger = { debug: jestApi.fn() };
 
-        await controller.get({ query: { token: 'v1.token' } }, res, next);
+        await controller.get(
+            { query: { token: 'v1.token' }, log: requestLogger },
+            res,
+            next
+        );
 
         expect(next).toHaveBeenCalledWith(error);
         expect(res.status).not.toHaveBeenCalled();

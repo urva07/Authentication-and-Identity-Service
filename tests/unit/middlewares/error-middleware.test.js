@@ -1,10 +1,11 @@
+const { describe, afterEach, jest: jestApi, test, expect } = require('@jest/globals');
 const { z } = require('zod');
 const { AppError, ValidationError } = require('../../../src/errors');
 const errorMiddleware = require('../../../src/middlewares/error.middleware');
 
 describe('error middleware', () => {
     afterEach(() => {
-        jest.restoreAllMocks();
+        jestApi.restoreAllMocks();
     });
 
     test('does not log raw validation input or its cause', () => {
@@ -16,8 +17,8 @@ describe('error middleware', () => {
             .safeParse({ password: secretPassword });
         const error = new ValidationError(parsed.error);
         const res = {
-            status: jest.fn().mockReturnThis(),
-            json: jest.fn()
+            status: jestApi.fn().mockReturnThis(),
+            json: jestApi.fn()
         };
 
         errorMiddleware(error, { method: 'POST', originalUrl: '/api/login' }, res);
@@ -36,8 +37,8 @@ describe('error middleware', () => {
     test('exposes unexpected errors to pino-http', () => {
         const error = new Error('database unavailable');
         const res = {
-            status: jest.fn().mockReturnThis(),
-            json: jest.fn()
+            status: jestApi.fn().mockReturnThis(),
+            json: jestApi.fn()
         };
 
         errorMiddleware(error, { method: 'GET', originalUrl: '/api/users' }, res);
@@ -52,8 +53,8 @@ describe('error middleware', () => {
 
     test('uses the status code and message defined by an AppError', () => {
         const res = {
-            status: jest.fn().mockReturnThis(),
-            json: jest.fn()
+            status: jestApi.fn().mockReturnThis(),
+            json: jestApi.fn()
         };
 
         errorMiddleware(
@@ -72,8 +73,8 @@ describe('error middleware', () => {
     test('exposes operational errors to pino-http', () => {
         const error = new AppError('Invalid login credentials', 401);
         const res = {
-            status: jest.fn().mockReturnThis(),
-            json: jest.fn()
+            status: jestApi.fn().mockReturnThis(),
+            json: jestApi.fn()
         };
 
         errorMiddleware(error, { method: 'POST', originalUrl: '/api/login' }, res);
@@ -87,8 +88,8 @@ describe('error middleware', () => {
             statusCode: 400
         });
         const res = {
-            status: jest.fn().mockReturnThis(),
-            json: jest.fn()
+            status: jestApi.fn().mockReturnThis(),
+            json: jestApi.fn()
         };
 
         errorMiddleware(error, { method: 'POST', originalUrl: '/api/login' }, res);

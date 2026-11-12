@@ -1,5 +1,5 @@
-const connectMySQL = require('./mysql');
-const connectRedis = require('#src/infrastructure/caching/redis.js');
+const { connectMySQL, sequelize, models } = require('./mysql');
+const { connectRedis, redisClients } = require('./redis.js');
 // const connectMongo = require('./mongo');
 
 const initializeConnections = async () => {
@@ -12,4 +12,15 @@ const initializeConnections = async () => {
     return { mysql, redis };
 };
 
-module.exports = initializeConnections;
+module.exports = { 
+    initializeConnections,
+    dbs: {
+        mysql: {
+            sequelize,
+            models
+        },
+        redis: {
+            ...redisClients
+        }
+    }
+};

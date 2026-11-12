@@ -2,6 +2,7 @@
 
 const { DataTypes, Sequelize } = require('sequelize');
 
+
 const timestamps = {
     created_at: {
         type: DataTypes.DATE,
@@ -14,6 +15,7 @@ const timestamps = {
         defaultValue: Sequelize.literal('CURRENT_TIMESTAMP')
     }
 };
+
 
 module.exports = {
     async up(queryInterface) {
@@ -125,15 +127,16 @@ module.exports = {
             }
         });
 
-        await queryInterface.addIndex(
-            'user_idps',
-            ['provider', 'provider_user_id'],
+        await queryInterface.addIndex('user_idps', 
+            [
+                'provider', 
+                'provider_user_id'
+            ],
             {
                 unique: true,
                 name: 'unique_idp'
             }
-        );
-    },
+        )},
 
     async down(queryInterface) {
         await queryInterface.dropTable('user_idps');

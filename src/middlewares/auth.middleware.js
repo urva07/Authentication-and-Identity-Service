@@ -1,8 +1,10 @@
 const { verifyJWTtoken } = require('#src/utils/jwt.js');
 const { AuthenticationError } = require('#src/errors/index.js');
 const config = require('#src/config/config.js');
-const { getUserRepository } = require('#src/repositories/index.js');
-const logger = require('#src/utils/logger.js');
+const { mysql: { getUserRepository } } = require('#src/repositories/index.js');
+let logger = require('#src/utils/logger.js');
+const requestCoalescer = require('#src/lib/requestCoalescer.js')
+const createCoalescingKey = require('#src/lib/createCoalescingKey.js');
 
 
 const authenticationSources = ['header', 'cookie'];
@@ -24,6 +26,7 @@ const authenticate = (source, tokenType = 'access') => {
     tokenType = tokenType.toLowerCase();
 
     return async (req, res, next) => {
+        logger = req.log || logger;
         logger.debug('Authenticating request.', { source, tokenType });
         let token;
 
@@ -34,7 +37,7 @@ const authenticate = (source, tokenType = 'access') => {
                 : null;
             token = bearerMatch?.[1];
         } else {
-            token = req.cookies?.[tokenType === 'access'? config.auth.jwt.jwtAccessTokenCookieName : config.auth.jwt.jwtRefreshTokenCookieName];
+            token = req.cookies?.[tokenType === 'access'? config.auth.jwt.cookieOptions.access.name : config.auth.jwt.cookieOptions.refresh.name];
         }
 
         if (!token) {
@@ -62,7 +65,15 @@ const authenticate = (source, tokenType = 'access') => {
             const userId = payload.sub;
 
             const userRepository = getUserRepository();
-            const user = await userRepository.findById(userId);
+            const user = await requestCoalescer(
+                createCoalescingKey({
+                    db: "mysql",
+                    repository: "userRepository",
+                    method: "findById",
+                    args: [userId]
+                }),
+                () => userRepository.findById(userId)
+            );
 
             if (!user) {
                 logger.debug('Authentication failed because the token user was not found.', { tokenType });

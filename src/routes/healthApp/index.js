@@ -1,5 +1,5 @@
 const express = require('express');
-const { registry: metricsRegistry } = require('../../monitoring/metrics');
+const metricsRegistry = require('#src/monitoring/prometheus.js');
 const { "notImplemented.middleware": notImplemented } = require('#src/middlewares/index.js');
 
 

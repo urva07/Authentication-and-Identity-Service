@@ -1,89 +1,92 @@
+const { describe, beforeEach, jest: jestApi, afterAll, test, expect } = require('@jest/globals');
 const jwt = require('jsonwebtoken');
 const { AuthenticationError } = require('../../../src/errors');
 const config = require('../../../src/config/config');
+const { configureRepositories } = require('../../../src/repositories');
 const authenticate = require('../../../src/middlewares/auth.middleware');
 
 describe('authentication middleware', () => {
     const jwtSecret = 'test-secret-with-enough-entropy-for-signing';
-    const originalJwtSecret = config.auth.jwt.jwtAccessTokenSecret;
+    const originalSecrets = {
+        access: config.auth.jwt.jwtAccessTokenSecret,
+        refresh: config.auth.jwt.jwtRefreshTokenSecret
+    };
+    let findByPk;
 
     beforeEach(() => {
         config.auth.jwt.jwtAccessTokenSecret = jwtSecret;
+        config.auth.jwt.jwtRefreshTokenSecret = jwtSecret;
+        findByPk = jestApi.fn().mockImplementation((id) => ({ id }));
+        configureRepositories({
+            User: { findByPk },
+            UserPassword: {},
+            IdentityProvider: {}
+        });
     });
 
     afterAll(() => {
-        config.auth.jwt.jwtAccessTokenSecret = originalJwtSecret;
+        config.auth.jwt.jwtAccessTokenSecret = originalSecrets.access;
+        config.auth.jwt.jwtRefreshTokenSecret = originalSecrets.refresh;
     });
 
-    test('accepts a valid auth cookie when configured for cookie authentication', () => {
+    test('accepts a valid access cookie', async () => {
         const token = jwt.sign({ sub: '42' }, jwtSecret);
-        const req = { cookies: { auth_token: token } };
-        const next = jest.fn();
+        const req = {
+            cookies: { [config.auth.jwt.cookieOptions.access.name]: token }
+        };
+        const next = jestApi.fn();
 
-        authenticate('cookie')(req, {}, next);
+        await authenticate('cookie')(req, {}, next);
 
         expect(req.user).toEqual({ id: '42' });
+        expect(findByPk).toHaveBeenCalledWith('42', {});
         expect(next).toHaveBeenCalledWith();
     });
 
-    test('accepts a bearer token when configured for authorization-header authentication', () => {
+    test('accepts a bearer token from the authorization header', async () => {
         const token = jwt.sign({ sub: '42' }, jwtSecret);
         const req = { headers: { authorization: `Bearer ${token}` } };
-        const next = jest.fn();
+        const next = jestApi.fn();
 
-        authenticate('authorization')(req, {}, next);
+        await authenticate('header')(req, {}, next);
 
         expect(req.user).toEqual({ id: '42' });
         expect(next).toHaveBeenCalledWith();
     });
 
-    test('does not accept a cookie when configured for authorization-header authentication', () => {
+    test('does not accept a cookie when configured for header authentication', async () => {
         const token = jwt.sign({ sub: '42' }, jwtSecret);
-        const next = jest.fn();
+        const next = jestApi.fn();
 
-        authenticate('authorization')({
+        await authenticate('header')({
             headers: {},
-            cookies: { auth_token: token }
+            cookies: { [config.auth.jwt.cookieOptions.access.name]: token }
         }, {}, next);
 
         expect(next).toHaveBeenCalledWith(expect.any(AuthenticationError));
         expect(next.mock.calls[0][0].statusCode).toBe(401);
     });
 
-    test('does not accept an authorization header when configured for cookie authentication', () => {
+    test('rejects malformed authorization headers', async () => {
         const token = jwt.sign({ sub: '42' }, jwtSecret);
-        const next = jest.fn();
+        const next = jestApi.fn();
 
-        authenticate('cookie')({
-            headers: { authorization: `Bearer ${token}` },
-            cookies: {}
+        await authenticate('header')({
+            headers: { authorization: `Basic ${token}` }
         }, {}, next);
 
         expect(next).toHaveBeenCalledWith(expect.any(AuthenticationError));
         expect(next.mock.calls[0][0].statusCode).toBe(401);
     });
 
-    test('rejects malformed authorization headers', () => {
-        const token = jwt.sign({ sub: '42' }, jwtSecret);
-        const next = jest.fn();
+    test('rejects invalid tokens from the configured source', async () => {
+        const next = jestApi.fn();
 
-        authenticate('authorization')({
-            headers: { authorization: `Basic ${token}` },
-            cookies: { auth_token: token }
+        await authenticate('cookie')({
+            cookies: {
+                [config.auth.jwt.cookieOptions.access.name]: 'invalid'
+            }
         }, {}, next);
-
-        expect(next).toHaveBeenCalledWith(expect.any(AuthenticationError));
-        expect(next.mock.calls[0][0].statusCode).toBe(401);
-    });
-
-    test('rejects invalid tokens from the configured source', () => {
-        const next = jest.fn();
-
-        authenticate('cookie')(
-            { cookies: { auth_token: 'invalid' } },
-            {},
-            next
-        );
 
         expect(next).toHaveBeenCalledWith(expect.any(AuthenticationError));
         expect(next.mock.calls[0][0]).toMatchObject({
@@ -92,25 +95,20 @@ describe('authentication middleware', () => {
         });
     });
 
-    test('reports missing JWT configuration as an authentication error', () => {
+    test('reports invalid JWT configuration as an error', async () => {
         const token = jwt.sign({ sub: '42' }, jwtSecret);
         config.auth.jwt.jwtAccessTokenSecret = undefined;
-        const next = jest.fn();
+        const next = jestApi.fn();
 
-        authenticate('cookie')(
-            { cookies: { auth_token: token } },
-            {},
-            next
-        );
+        await authenticate('cookie')({
+            cookies: {
+                [config.auth.jwt.cookieOptions.access.name]: token
+            }
+        }, {}, next);
 
         expect(next).toHaveBeenCalledWith(
-            expect.objectContaining({
-                name: 'AuthenticationError',
-                statusCode: 500,
-                message: 'Authentication is not configured'
-            })
+            expect.objectContaining({ message: 'Invalid JWT secret.' })
         );
-        expect(next.mock.calls[0][0]).toBeInstanceOf(AuthenticationError);
     });
 
     test('rejects an unsupported authentication source', () => {

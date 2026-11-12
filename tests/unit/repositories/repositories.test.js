@@ -1,3 +1,4 @@
+const { describe, jest: jestApi, test, expect } = require('@jest/globals');
 const {
     userRepository,
     userPasswordRepository,
@@ -7,12 +8,12 @@ const {
 describe('authentication repositories', () => {
     const userId = '3f0c1d52-8a7e-4b1c-9d34-5e6f7a8b9c0d';
     const createModel = () => ({
-        create: jest.fn(),
-        findByPk: jest.fn(),
-        findOne: jest.fn(),
-        findAll: jest.fn(),
-        update: jest.fn(),
-        destroy: jest.fn()
+        create: jestApi.fn(),
+        findByPk: jestApi.fn(),
+        findOne: jestApi.fn(),
+        findAll: jestApi.fn(),
+        update: jestApi.fn(),
+        destroy: jestApi.fn()
     });
 
     test('routes user operations to users by primary key', async () => {
@@ -59,9 +60,9 @@ describe('authentication repositories', () => {
     });
 
     test('finds users by email including their required password hash', async () => {
-        const { UserPassword } = require('../../../src/models/index.js');
+        const UserPassword = createModel();
         const User = createModel();
-        const user = userRepository(User);
+        const user = userRepository(User, UserPassword);
         User.findOne.mockResolvedValue({ id: userId });
 
         await expect(
@@ -72,6 +73,7 @@ describe('authentication repositories', () => {
             include: [
                 {
                     model: UserPassword,
+                    as: 'password',
                     required: true,
                     attributes: ['passwordHash']
                 }
