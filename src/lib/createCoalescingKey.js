@@ -1,38 +1,37 @@
 const stableStringify = require("fast-json-stable-stringify");
 
-const UUID_DASH_POSITIONS = [8, 13, 18, 23];
-const UUID_LENGTH = 36;
 
-const isUuid = (value) => value.length === UUID_LENGTH &&
-    [...value].every((character, index) => {
-        if (UUID_DASH_POSITIONS.includes(index)) {
-            return character === '-';
+const allowedRedisInstances = ['userCache'];
+const allowedDbs = ['redis', 'mongodb', 'mysql'];
+
+function createCoalescingKey({db, redisInstance, repository, method}) {
+    if (!db || !repository || !method) {
+        throw new Error('All parameters (db, repository, method) are required.');
+    }
+    if (typeof db !== 'string' || typeof repository !== 'string' || typeof method !== 'string') {
+        throw new Error('Invalid parameter types. Expected db, repository, and method to be strings.');
+    }
+
+    const normalizedDb = db.toLowerCase();
+    if (!allowedDbs.includes(normalizedDb)) {
+        throw new Error(`Invalid db. Allowed dbs are: ${allowedDbs.join(', ')}`);
+    }
+    if (normalizedDb === 'redis' && !allowedRedisInstances.includes(redisInstance)) {
+        throw new Error(`Invalid redisInstance. Allowed instances are: ${allowedRedisInstances.join(', ')}`);
+    }
+
+    const prefix = normalizedDb === 'redis' ? `redis:${redisInstance}` : normalizedDb;
+    const keyPrefix = `${prefix}:${repository.toLowerCase()}:${method.toLowerCase()}`;
+    
+    return function (args) {
+        if (!Array.isArray(args)) {
+            throw new Error('Invalid args. Expected an array.');
         }
-
-        return '0123456789abcdef'.includes(character.toLowerCase());
-    });
-
-function createCoalescingKey({db, repository, method, args}) {
-    const isUserIdLookup = (
-        db.toLowerCase() === 'mysql' &&
-        (
-            (
-                repository.toLowerCase() === 'userrepository' &&
-                method.toLowerCase() === 'findbyid'
-            ) ||
-            (
-                repository.toLowerCase() === 'userpasswordrepository' &&
-                method.toLowerCase() === 'findbyuserid'
-            )
-        ) &&
-        Array.isArray(args) &&
-        args.length === 1 &&
-        typeof args[0] === 'string' &&
-        isUuid(args[0])
-    );
-    const keyArgs = isUserIdLookup ? [args[0].toLowerCase()] : args;
-
-    return `${db.toLowerCase()}:${repository.toLowerCase()}:${method.toLowerCase()}:${stableStringify(keyArgs)}`;
+        if (args.some(arg => typeof arg === 'undefined')) {
+            throw new Error('All elements in args array must be defined.');
+        }
+        return `${keyPrefix}:${stableStringify(args)}`;
+    };
 }
 
 

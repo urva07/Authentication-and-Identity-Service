@@ -5,14 +5,14 @@ const { Counter, Histogram } = require('@prometheus-io/client');
 const requestCount = new Counter({
     name: 'http_requests_total',
     help: 'Total number of completed HTTP requests.',
-    labelNames: ['method', 'status_code', 'path'],
+    labelNames: ['method', 'status_code', 'path', 'ip', 'user_id', 'mail'],
     registers: [registry]
 });
 
 const failedRequestCount = new Counter({
     name: 'http_failed_requests_total',
     help: 'Total number of completed HTTP requests with a 4xx or 5xx status.',
-    labelNames: ['method', 'status_code', 'path'],
+    labelNames: ['method', 'status_code', 'path', 'ip', 'user_id', 'mail'],
     registers: [registry]
 });
 

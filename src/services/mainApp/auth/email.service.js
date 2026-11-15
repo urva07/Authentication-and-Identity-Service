@@ -1,4 +1,4 @@
-const config = require('#src/config/config.js');
+const config = require('#src/config/config/index.js');
 const { ExternalServiceTimeoutError } = require('#src/errors/index.js');
 const createMailClient = require('#src/integrations/mailClient.js');
 const defaultLogger = require('#src/utils/logger.js');

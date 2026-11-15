@@ -7,11 +7,17 @@ const requestMetricsRecorderCreator = ({ requestCount, failedRequestCount, reque
             path: req.path
         };
 
-        requestCount.inc(labels);
+        const userIdentityLabels = {
+            ip: req.ip,
+            user_id: req.user?.id || '',
+            mail: req.user?.mail || ''
+        };
+
+        requestCount.inc({...labels, ...userIdentityLabels});
         requestDuration.observe(labels, responseTimeMs / 1000);
 
         if (res.statusCode >= 400) {
-            failedRequestCount.inc(labels);
+            failedRequestCount.inc({...labels, ...userIdentityLabels});
         }
     };
 

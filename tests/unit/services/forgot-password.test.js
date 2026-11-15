@@ -1,13 +1,13 @@
 const { describe, beforeEach, jest: jestApi, afterAll, test, expect } = require('@jest/globals');
 const jwt = require('jsonwebtoken');
-const config = require('#src/config/config.js');
+const config = require('#src/config/config/index.js');
 const createForgotPasswordService = require('#src/services/mainApp/auth/forgotPassword.service.js');
 const createForgotPasswordController = require('#src/controllers/mainApp/v1/auth/forgotPassword.controller.js');
 
 describe('forgot password', () => {
     const secret = 'c3a1f5d9b7e24680a1c3e5f70912b4d6e8f0a2c4b6d8e0f1a3b5c7d9e1f30415';
     const original = { ...config.auth.jwt };
-    const apiBaseUrl = config.app.apiBaseUrl;
+    const apiBaseUrl = config.apps.mainApp.apiBaseUrl;
     let userRepository;
     let emailService;
     let activeTokenRepository;
@@ -16,7 +16,7 @@ describe('forgot password', () => {
     beforeEach(() => {
         config.auth.jwt.jwtPasswordResetTokenSecret = secret;
         config.auth.jwt.jwtPasswordResetTokenTtlSeconds = 900;
-        config.app.apiBaseUrl = 'https://api.example.com';
+        config.apps.mainApp.apiBaseUrl = 'https://api.example.com';
         userRepository = { findByEmail: jestApi.fn() };
         emailService = { sendEmail: jestApi.fn().mockResolvedValue({}) };
         activeTokenRepository = { create: jestApi.fn().mockResolvedValue({}) };
@@ -29,7 +29,7 @@ describe('forgot password', () => {
 
     afterAll(() => {
         Object.assign(config.auth.jwt, original);
-        config.app.apiBaseUrl = apiBaseUrl;
+        config.apps.mainApp.apiBaseUrl = apiBaseUrl;
     });
 
     test('emails a signed change-password link containing user id and email', async () => {

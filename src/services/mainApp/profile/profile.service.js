@@ -1,8 +1,13 @@
 const { AuthenticationError, NotFoundError } = require('#src/errors/index.js');
-const { mysql: { getUserRepository } } = require('#src/repositories/index.js');
+const { 
+    mysql: { 
+        getUserRepository 
+    } 
+} = require('#src/repositories/index.js');
 const requestCoalescer = require('#src/lib/requestCoalescer.js');
 const createCoalescingKey = require('#src/lib/createCoalescingKey.js');
 const defaultLogger = require('#src/utils/logger.js');
+
 
 const toDateOnly = (value) => {
     if (value instanceof Date) {
@@ -34,7 +39,9 @@ const toPublicProfile = (user) => ({
     profilePhoto: user.profilePhoto ?? null
 });
 
-const createProfileService = ({ userRepository } = {}) => {
+const createProfileService = ({ 
+    userRepository 
+} = {}) => {
     if (
         userRepository !== undefined &&
         (
@@ -45,19 +52,17 @@ const createProfileService = ({ userRepository } = {}) => {
         throw new TypeError('Profile service requires a user repository');
     }
 
-    const getRepository = () => userRepository || getUserRepository();
+    const coalescingKey = createCoalescingKey({
+        db: "mysql",
+        repository: "userRepository",
+        method: "findById"
+    });
 
     const findProfileById = (profileId, repository, logger = defaultLogger) => {
-        const args = [profileId]
-
+        repository = userRepository || getUserRepository();
         return requestCoalescer(
-            createCoalescingKey({
-                db: "mysql",
-                repository: "userRepository",
-                method: "findById",
-                args
-            }),
-            () => repository.findById(...args),
+            coalescingKey([profileId]),
+            () => repository.findById(profileId),
             logger
         );
     };
@@ -68,7 +73,7 @@ const createProfileService = ({ userRepository } = {}) => {
             throw new AuthenticationError('Invalid token');
         }
 
-        const foundUser = await findProfileById(user.id, getRepository(), logger);
+        const foundUser = await findProfileById(user.id, userRepository, logger);
         if (!foundUser) {
             logger.debug('Requested profile was not found');
             throw new NotFoundError('User not found');
@@ -83,9 +88,9 @@ const createProfileService = ({ userRepository } = {}) => {
             throw new AuthenticationError('Invalid token');
         }
 
-        const repository = getRepository();
-        await repository.updateById(user.id, attributes);
-        const updatedUser = await repository.findById(user.id);
+        userRepository = userRepository || getUserRepository();
+        await userRepository.updateById(user.id, attributes);
+        const updatedUser = await findProfileById(user.id, userRepository, logger);
 
         if (!updatedUser) {
             logger.debug('Profile update failed because the user no longer exists');
@@ -102,7 +107,7 @@ const createProfileService = ({ userRepository } = {}) => {
             throw new AuthenticationError('Invalid token');
         }
 
-        const user = await findProfileById(id, getRepository(), logger);
+        const user = await findProfileById(id, userRepository, logger);
 
         if (!user) {
             logger.debug('Requested profile was not found');

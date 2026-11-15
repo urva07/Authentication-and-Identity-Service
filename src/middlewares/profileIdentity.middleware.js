@@ -1,6 +1,6 @@
 const { timingSafeEqual } = require('node:crypto');
 const { z } = require('zod');
-const config = require('#src/config/config.js');
+const config = require('#src/config/config/index.js');
 const { AuthenticationError } = require('#src/errors/index.js');
 
 

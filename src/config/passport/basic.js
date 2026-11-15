@@ -7,22 +7,22 @@ const requestCoalescer = require('#src/lib/requestCoalescer.js')
 const createCoalescingKey = require('#src/lib/createCoalescingKey.js');
 
 
-const basicStrategy = new LocalStrategy(
-    {
-        usernameField: 'email',
-        passwordField: 'password'
-    }, 
-    async (email, password, done) => {
+const createBasicAuthenticationCallback = ({
+    userRepository
+} = {}) => {
+
+    const coalescingKey = createCoalescingKey({
+        db: "mysql",
+        repository: "userRepository",
+        method: "findByEmailWithPassword"
+    });
+
+    return async (email, password, done) => {
         logger.debug('Basic authentication attempt started');
         try {
-            const userRepository = getUserRepository();
+            userRepository =  userRepository || getUserRepository();
             const user = await requestCoalescer(
-                createCoalescingKey({
-                    db: "mysql",
-                    repository: "userRepository",
-                    method: "findByEmailWithPassword",
-                    args: [email]
-                }),
+                coalescingKey([email]),
                 () => userRepository.findByEmailWithPassword(email),
                 logger
             );
@@ -50,11 +50,19 @@ const basicStrategy = new LocalStrategy(
             logger.debug('Basic authentication failed with an unexpected error');
             return done(error);
         }
+    };
+};
 
-    }
-)
+const basicStrategy = new LocalStrategy(
+    {
+        usernameField: 'email',
+        passwordField: 'password'
+    },
+    createBasicAuthenticationCallback()
+);
 
 
 module.exports = {
-    basicStrategy
+    basicStrategy,
+    createBasicAuthenticationCallback
 }

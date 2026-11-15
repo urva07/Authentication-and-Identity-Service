@@ -1,6 +1,6 @@
 const { createClient } = require('redis');
 const logger = require('#src/utils/logger.js');
-const config = require('#src/config/config.js');
+const config = require('#src/config/config/index.js');
 
 
 const { 
@@ -9,7 +9,7 @@ const {
     username: sessionUsername, 
     password: sessionPassword, 
     database: sessionDatabase 
-} = config.redis.sessionRedis;
+} = config.database.redis.sessionRedis;
 
 const { 
     host: cacheHost, 
@@ -17,7 +17,7 @@ const {
     username: cacheUsername, 
     password: cachePassword, 
     database: cacheDatabase 
-} = config.redis.userCacheRedis;
+} = config.database.redis.userCacheRedis;
 
 const { 
     host: rateLimitHost, 
@@ -25,7 +25,7 @@ const {
     username: rateLimitUsername, 
     password: rateLimitPassword, 
     database: rateLimitDatabase 
-} = config.redis.rateLimitRedis;
+} = config.database.redis.rateLimitRedis;
 
 if (!sessionHost || !sessionPort) {
     throw new Error('Redis session configuration is incomplete. Set REDIS_HOST and REDIS_PORT for session.');

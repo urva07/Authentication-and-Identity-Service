@@ -1,7 +1,7 @@
 const { Sequelize } = require('sequelize');
 const initializeModels = require('#src/models/index.js');
 const logger = require('#src/utils/logger.js');
-const config = require('#src/config/config.js');
+const config = require('#src/config/config/index.js');
 
 const { username, password, host, port, database } = config.database.mysql;
 

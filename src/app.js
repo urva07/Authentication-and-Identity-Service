@@ -69,16 +69,16 @@ app.use(middlewares.cors({
 
 app.use(middlewares.rateLimiter({
     windowMs: 1 * 60 * 1000, // 1 minute
-    max: 200 // limit each IP to 100 requests per windowMs
+    max: 10000 // limit each IP to 100 requests per windowMs
 }));
 
 app.use(middlewares.json({
-    limit: config.app.bodySizeLimit // limit the body to 100kb
+    limit: config.apps.mainApp.bodySizeLimit // limit the body to 100kb
 }));
 
 app.use(middlewares.urlencoded({ 
     extended: true,
-    limit: config.app.bodySizeLimit // limit the body to 100kb
+    limit: config.apps.mainApp.bodySizeLimit // limit the body to 100kb
 }));
 
 app.use(middlewares.cookieParser());

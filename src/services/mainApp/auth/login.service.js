@@ -1,4 +1,4 @@
-const config = require('#src/config/config.js');
+const config = require('#src/config/config/index.js');
 const bcrypt = require('bcryptjs');
 const defaultLogger = require('#src/utils/logger.js');
 const { AuthenticationError } = require('#src/errors/index.js');
@@ -17,8 +17,7 @@ const INVALID_CREDENTIALS = 'Invalid login credentials';
 
 const createLoginService = ({
     userRepository,
-    userPasswordRepository,
-    jwtSecret = config.auth.jwt.jwtAccessTokenSecret
+    userPasswordRepository
 } = {}) => {
     if (
         userRepository !== undefined && 
@@ -34,40 +33,37 @@ const createLoginService = ({
         throw new TypeError('Login service requires user and password repositories');
     }
 
-    const resolveUserRepository = () => userRepository || getUserRepository();
-    
-    const resolveUserPasswordRepository = () => {
-        return userPasswordRepository || getUserPasswordRepository();
-    };
+    const userRepoCoalescingKey = createCoalescingKey({
+        db: 'mysql',
+        repository: 'userRepository',
+        method: 'findByEmail'
+    });
+
+    const userPasswordRepoCoalescingKey = createCoalescingKey({
+        db: 'mysql',
+        repository: 'userPasswordRepository',
+        method: 'findByUserId'
+    });
 
     const findUser = (email, logger) => {
         logger.debug('Looking up login user by email');
-        const repository = resolveUserRepository();
-        const args = [email.trim().toLowerCase()];
+        userRepository = userRepository || getUserRepository();
+        const normalizedEmail = email.trim().toLowerCase();
+
         return requestCoalescer(
-            createCoalescingKey({
-                db: 'mysql',
-                repository: 'userRepository',
-                method: 'findByEmail',
-                args
-            }),
-            () => repository.findByEmail(...args),
+            userRepoCoalescingKey([normalizedEmail]),
+            () => userRepository.findByEmail(normalizedEmail),
             logger
         );
     };
 
     const verifyPassword = async (userId, password, logger) => {
         logger.debug('Verifying login password', { userId: String(userId) });
-        const repository = resolveUserPasswordRepository();
+        userPasswordRepository = userPasswordRepository || getUserPasswordRepository();
         const args = [userId];
         const passwordCredential = await requestCoalescer(
-            createCoalescingKey({
-                db: 'mysql',
-                repository: 'userPasswordRepository',
-                method: 'findByUserId',
-                args
-            }),
-            () => repository.findByUserId(...args),
+            userPasswordRepoCoalescingKey(args),
+            () => userPasswordRepository.findByUserId(...args),
             logger
         );
 
@@ -84,9 +80,6 @@ const createLoginService = ({
 
     const loginUser = async (credentials, logger = defaultLogger) => {
         logger.debug('Login attempt started');
-        if (!jwtSecret || Buffer.byteLength(jwtSecret) < 32) {
-            throw new Error('Authentication requires a JWT secret of at least 32 bytes');
-        }
 
         if (typeof credentials?.email !== 'string') {
             throw new AuthenticationError(INVALID_CREDENTIALS);

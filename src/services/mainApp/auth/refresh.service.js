@@ -1,6 +1,6 @@
 const jwtClient = require('jsonwebtoken');
 const { AppError, AuthenticationError } = require('#src/errors/index.js');
-const config = require('#src/config/config.js');
+const config = require('#src/config/config/index.js');
 const defaultLogger = require('#src/utils/logger.js');
 
 const createRefreshService = ({

@@ -1,6 +1,6 @@
 const path = require('node:path');
 const ejs = require('ejs');
-const config = require('#src/config/config.js');
+const config = require('#src/config/config/index.js');
 const { 
     mysql: { 
         getUserRepository,
@@ -44,6 +44,15 @@ const createForgotPasswordService = ({
         throw new TypeError('Forgot password service requires an active token repository');
     }
 
+    const coalescingKey = createCoalescingKey({
+        db: "mysql",
+        repository: "userRepository",
+        method: "findByEmail"
+    });
+
+    const ttlSeconds = config.auth.jwt.jwtPasswordResetTokenTtlSeconds;
+    const tokenExpiry = `${Math.round(ttlSeconds / 60)} minutes`;
+
     let productionEmailService;
 
     const getEmailService = () => {
@@ -65,7 +74,7 @@ const createForgotPasswordService = ({
     };
 
     const createResetUrl = (token) => {
-        const resetUrl = new URL(CHANGE_PASSWORD_PATH, config.app.apiBaseUrl);
+        const resetUrl = new URL(CHANGE_PASSWORD_PATH, config.apps.mainApp.apiBaseUrl);
 
         if (!['http:', 'https:'].includes(resetUrl.protocol)) {
             throw new Error('API_BASE_URL must be a valid HTTP(S) URL');
@@ -77,16 +86,12 @@ const createForgotPasswordService = ({
 
     const forgotPassword = async ({ email }, signal, logger = defaultLogger) => {
         logger.debug('Password reset request started');
+        userRepository = userRepository || getUserRepository();
+        activeTokenRepository = activeTokenRepository || getActiveTokenRepository();
         const normalizedEmail = email.trim().toLowerCase();
-        const repository = userRepository || getUserRepository();
         const user = await requestCoalescer(
-            createCoalescingKey({
-                db: "mysql",
-                repository: "userRepository",
-                method: "findByEmail",
-                args: [normalizedEmail]
-            }),
-            () => repository.findByEmail(normalizedEmail),
+            coalescingKey([normalizedEmail]),
+            () => userRepository.findByEmail(normalizedEmail),
             logger
         );
 
@@ -102,16 +107,13 @@ const createForgotPasswordService = ({
             secret: config.auth.jwt.jwtPasswordResetTokenSecret
         });
         const resetUrl = createResetUrl(token);
-        const ttlSeconds = config.auth.jwt.jwtPasswordResetTokenTtlSeconds;
-        const tokenExpiry = `${Math.round(ttlSeconds / 60)} minutes`;
         const name = user.firstName || 'there';
         const html = await ejs.renderFile(
             path.join(process.cwd(), 'src/views/emailTemplates/forgotPassword.ejs'),
             { name, resetUrl, tokenExpiry }
         );
 
-        const tokens = activeTokenRepository || getActiveTokenRepository();
-        await tokens.create({
+        await activeTokenRepository.create({
             tokenType: PASSWORD_RESET_PURPOSE,
             jti: payload.jti,
             userId: user.id,

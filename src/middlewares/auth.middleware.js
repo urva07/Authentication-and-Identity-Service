@@ -1,7 +1,11 @@
 const { verifyJWTtoken } = require('#src/utils/jwt.js');
 const { AuthenticationError } = require('#src/errors/index.js');
-const config = require('#src/config/config.js');
-const { mysql: { getUserRepository } } = require('#src/repositories/index.js');
+const config = require('#src/config/config/index.js');
+const { 
+    mysql: { 
+        getUserRepository 
+    } 
+} = require('#src/repositories/index.js');
 let logger = require('#src/utils/logger.js');
 const requestCoalescer = require('#src/lib/requestCoalescer.js')
 const createCoalescingKey = require('#src/lib/createCoalescingKey.js');
@@ -10,7 +14,11 @@ const createCoalescingKey = require('#src/lib/createCoalescingKey.js');
 const authenticationSources = ['header', 'cookie'];
 const tokenTypes = ['access', 'refresh'];
 
-const authenticate = (source, tokenType = 'access') => {
+const authenticate = ({
+    source, 
+    tokenType = 'access',
+    userRepository
+}) => {
     if (!authenticationSources.includes(source)) {
         throw new TypeError(
             `Authentication source must be one of: ${authenticationSources.join(', ')}`
@@ -24,21 +32,32 @@ const authenticate = (source, tokenType = 'access') => {
     }
 
     tokenType = tokenType.toLowerCase();
+    
+    const createTokenExtractor = () => {
+        if (source === 'header') {
+            return (req) => {
+                const authorization = req.headers?.authorization;
+                const bearerMatch = typeof authorization === 'string'
+                    ? authorization.trim().match(/^Bearer\s+(\S+)$/i)
+                    : null;
+                return bearerMatch?.[1];
+            };
+        }
+        return (req) => req.cookies?.[tokenType === 'access'? config.auth.jwt.cookieOptions.access.name : config.auth.jwt.cookieOptions.refresh.name];
+    }
+    const extractToken = createTokenExtractor();
+
+    const coalescingKey = createCoalescingKey({
+        db: "mysql",
+        repository: "userRepository",
+        method: "findById"
+    });
 
     return async (req, res, next) => {
         logger = req.log || logger;
         logger.debug('Authenticating request.', { source, tokenType });
-        let token;
 
-        if (source === 'header') {
-            const authorization = req.headers?.authorization;
-            const bearerMatch = typeof authorization === 'string'
-                ? authorization.trim().match(/^Bearer\s+(\S+)$/i)
-                : null;
-            token = bearerMatch?.[1];
-        } else {
-            token = req.cookies?.[tokenType === 'access'? config.auth.jwt.cookieOptions.access.name : config.auth.jwt.cookieOptions.refresh.name];
-        }
+        const token = extractToken(req);
 
         if (!token) {
             logger.debug('Authentication token was not found.', { source, tokenType });
@@ -62,17 +81,13 @@ const authenticate = (source, tokenType = 'access') => {
                 token: token, 
                 secret: jwtSecret
             });
-            const userId = payload.sub;
+            userRepository = userRepository || getUserRepository();
+            const args = [payload.sub];
 
-            const userRepository = getUserRepository();
             const user = await requestCoalescer(
-                createCoalescingKey({
-                    db: "mysql",
-                    repository: "userRepository",
-                    method: "findById",
-                    args: [userId]
-                }),
-                () => userRepository.findById(userId)
+                coalescingKey(args),
+                () => userRepository.findById(...args),
+                logger
             );
 
             if (!user) {

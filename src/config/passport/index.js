@@ -10,18 +10,19 @@ const createCoalescingKey = require('#src/lib/createCoalescingKey.js');
 
 const initializePassport = (session=true) => {
     if (session) {
-        passport.serializeUser((user, done) => done(null, user.id));
+        const coalescingKey = createCoalescingKey({
+            db: "mysql",
+            repository: "userRepository",
+            method: "findById"
+        });
 
+        passport.serializeUser((user, done) => done(null, user.id));
         passport.deserializeUser(async (id, done) => {
             try {
+                const args = [id];
                 const user = await requestCoalescer(
-                    createCoalescingKey({
-                        db: "mysql",
-                        repository: "userRepository",
-                        method: "findById",
-                        args: [id]
-                    }),
-                    () => getUserRepository().findById(id)
+                    coalescingKey(args),
+                    () => getUserRepository().findById(...args)
                 );
                 done(null, user || false);
             } catch (error) {

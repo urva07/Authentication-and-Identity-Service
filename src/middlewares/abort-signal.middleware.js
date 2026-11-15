@@ -45,7 +45,7 @@ const abortSignalMiddleware = (req, res, next) => {
             controller.abort(new ExternalServiceTimeoutError());
         }
         cleanup();
-    }, config.app.externalApiTimeoutMs);
+    }, config.apps.mainApp.externalApiTimeoutMs);
 
     timeout.unref?.();
 

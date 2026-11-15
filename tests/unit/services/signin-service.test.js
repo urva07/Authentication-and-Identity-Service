@@ -12,21 +12,21 @@ describe('signin service', () => {
     let signinService;
     const original = {
         secret: config.auth.basic.signinAes256GcmTokenSecret,
-        apiBaseUrl: config.app.apiBaseUrl,
+        apiBaseUrl: config.apps.mainApp.apiBaseUrl,
         saltRounds: config.auth.basic.hashSaltRounds,
         tokenTtlSeconds: config.auth.basic.signinAes256GcmTokenTtlSeconds
     };
 
     afterAll(() => {
         config.auth.basic.signinAes256GcmTokenSecret = original.secret;
-        config.app.apiBaseUrl = original.apiBaseUrl;
+        config.apps.mainApp.apiBaseUrl = original.apiBaseUrl;
         config.auth.basic.hashSaltRounds = original.saltRounds;
         config.auth.basic.signinAes256GcmTokenTtlSeconds = original.tokenTtlSeconds;
     });
 
     beforeEach(() => {
         config.auth.basic.signinAes256GcmTokenSecret = tokenSecret;
-        config.app.apiBaseUrl = 'https://api.example.com';
+        config.apps.mainApp.apiBaseUrl = 'https://api.example.com';
         config.auth.basic.hashSaltRounds = 4;
         config.auth.basic.signinAes256GcmTokenTtlSeconds = 600;
         userRepository = {
@@ -117,7 +117,7 @@ describe('signin service', () => {
     });
 
     test('rejects an invalid API base URL instead of sending a malformed link', async () => {
-        config.app.apiBaseUrl = 'not a URL';
+        config.apps.mainApp.apiBaseUrl = 'not a URL';
         const service = createSigninService({
             userRepository,
             emailService

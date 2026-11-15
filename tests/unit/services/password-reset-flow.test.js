@@ -7,11 +7,11 @@ describe('password reset flow', () => {
     test('an emailed token can change the password once', async () => {
         const originalSecret = config.auth.jwt.jwtPasswordResetTokenSecret;
         const originalTtl = config.auth.jwt.jwtPasswordResetTokenTtlSeconds;
-        const originalBaseUrl = config.app.apiBaseUrl;
+        const originalBaseUrl = config.apps.mainApp.apiBaseUrl;
         const originalSaltRounds = config.auth.basic.hashSaltRounds;
         config.auth.jwt.jwtPasswordResetTokenSecret = 'a'.repeat(64);
         config.auth.jwt.jwtPasswordResetTokenTtlSeconds = 900;
-        config.app.apiBaseUrl = 'https://api.example.com';
+        config.apps.mainApp.apiBaseUrl = 'https://api.example.com';
         config.auth.basic.hashSaltRounds = 4;
 
         try {
@@ -59,7 +59,7 @@ describe('password reset flow', () => {
         } finally {
             config.auth.jwt.jwtPasswordResetTokenSecret = originalSecret;
             config.auth.jwt.jwtPasswordResetTokenTtlSeconds = originalTtl;
-            config.app.apiBaseUrl = originalBaseUrl;
+            config.apps.mainApp.apiBaseUrl = originalBaseUrl;
             config.auth.basic.hashSaltRounds = originalSaltRounds;
         }
     });

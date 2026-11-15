@@ -1,4 +1,4 @@
-const config = require('#src/config/config.js');
+const config = require('#src/config/config/index.js');
 const { ValidationError } = require('#src/errors/index.js');
 const { generateAccessToken, generateRefreshToken } = require('#src/utils/jwt.js');
 const { 
@@ -46,11 +46,16 @@ const createVerifyEmailService = ({
         throw new TypeError('Verify email service requires a user password repository');
     }
 
-    const decodeToken = (token) => {
-        const encryptionKey = createSigninTokenKey(
-            config.auth.basic.signinAes256GcmTokenSecret
-        );
+    sequelize = mysqlSequelizeClient || sequelize;
+    const encryptionKey = createSigninTokenKey(config.auth.basic.signinAes256GcmTokenSecret);
 
+    const coalescingKey = createCoalescingKey({
+        db: "mysql",
+        repository: "userRepository",
+        method: "findById"
+    });
+
+    const decodeToken = (token) => {
         const payload = verifyAes256GcmTokenWithExpiry(token, encryptionKey);
         if (!payload) {
             throw new ValidationError(INVALID_LINK_MESSAGE);
@@ -71,24 +76,18 @@ const createVerifyEmailService = ({
     const verifyEmail = async (token, logger = defaultLogger) => {
         logger.debug('Email verification started');
         const { email, passwordHash, name, sub } = decodeToken(token);
-        const users = userRepository || getUserRepository();
-        const passwords = userPasswordRepository || getUserPasswordRepository();
-        sequelize = mysqlSequelizeClient || sequelize;
 
+        userRepository = userRepository || getUserRepository();
+        userPasswordRepository = userPasswordRepository || getUserPasswordRepository();
          const existingUser = await requestCoalescer(
-            createCoalescingKey({
-                db: "mysql",
-                repository: "userRepository",
-                method: "findById",
-                args: [sub]
-            }),
-            () => users.findById(sub),
+            coalescingKey([sub]),
+            () => userRepository.findById(sub),
             logger
         );
 
         if (existingUser) {
             if (existingUser.email === email) {
-                defaultLogger.debug('A reuse of valid token is detected.');
+                logger.debug('A reuse of valid token is detected.');
 
                 return {
                     conflict: true,
@@ -99,7 +98,7 @@ const createVerifyEmailService = ({
                 }
             }
 
-            defaultLogger.debug('A reuse of valid token is detected with an old email.');
+            logger.debug('A reuse of valid token is detected with an old email.');
             throw new ValidationError(INVALID_LINK_MESSAGE);
         }
 
@@ -107,14 +106,26 @@ const createVerifyEmailService = ({
 
         try {
             await sequelize.transaction(async (transaction) => {
-                const createdUser = await users.create(
-                    { id: sub, email, firstName, lastName },
-                    { transaction }
+                const createdUser = await userRepository.create(
+                    { 
+                        id: sub, 
+                        email, 
+                        firstName, 
+                        lastName 
+                    },
+                    { 
+                        transaction 
+                    }
                 );
 
-                await passwords.create(
-                    { userId: sub, passwordHash },
-                    { transaction }
+                await userPasswordRepository.create(
+                    { 
+                        userId: sub, 
+                        passwordHash 
+                    },
+                    { 
+                        transaction 
+                    }
                 );
 
                 return createdUser;
@@ -137,7 +148,7 @@ const createVerifyEmailService = ({
             };
         } catch (error) {
             if (error?.name === 'SequelizeUniqueConstraintError') {
-                defaultLogger.debug('A conflict of user has been encountered after verifying the user doesnot exist while creating it during database transaction.')
+                logger.debug('A conflict of user has been encountered after verifying the user doesnot exist while creating it during database transaction.')
 
                 return {
                     conflict: true,

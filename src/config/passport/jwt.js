@@ -7,34 +7,39 @@ const requestCoalescer = require('#src/lib/requestCoalescer.js')
 const createCoalescingKey = require('#src/lib/createCoalescingKey.js');
 
 
-const userExtractor = async (payload, done) => {
-    try {
-        logger.debug('Looking up user for JWT authentication');
-        const userRepository = getUserRepository();
-        const args = [payload.sub]
-        const user = await requestCoalescer(
-            createCoalescingKey({
-                db: "mysql",
-                repository: "userRepository",
-                method: "findById",
-                args
-            }),
-            () => userRepository.findById(...args),
-            logger
-        );
+const createJwtAuthenticationCallback = ({
+    userRepository
+} = {}) => {
+    const coalescingKey = createCoalescingKey({
+        db: "mysql",
+        repository: "userRepository",
+        method: "findById"
+    });
 
-        if (!user) {
-            logger.debug('JWT authentication rejected: user was not found');
-            return done(new AuthenticationError("Invalid token"));
+    return async (payload, done) => {
+        try {
+            logger.debug('[passport-jwt] Looking up user for JWT authentication');
+            userRepository = userRepository || getUserRepository();
+            const args = [payload.sub]
+            const user = await requestCoalescer(
+                coalescingKey(args),
+                () => userRepository.findById(...args),
+                logger
+            );
+
+            if (!user) {
+                logger.debug('[passport-jwt] JWT authentication rejected: user was not found');
+                return done(new AuthenticationError("Invalid token"));
+            }
+
+            logger.debug('[passport-jwt] JWT authentication user lookup succeeded');
+            return done(null, user);
+        } catch (error) {
+            logger.debug('[passport-jwt] JWT authentication user lookup failed');
+            return done(error);
         }
-
-        logger.debug('JWT authentication user lookup succeeded');
-        return done(null, user);
-    } catch (error) {
-        logger.debug('JWT authentication user lookup failed');
-        return done(error);
     }
-};
+}
 
 const buildJwtStrategy = ({
     tokenExtractor,
@@ -83,11 +88,12 @@ const createJwtStrategy = (
                     }
                 ]),
         secret: tokenSecret,
-        userExtractor
+        userExtractor: createJwtAuthenticationCallback()
     });
 };
 
 
 module.exports = {
-    jwtStrategy: createJwtStrategy
+    jwtStrategy: createJwtStrategy,
+    jwtAuthenticationCallback: createJwtAuthenticationCallback
 };

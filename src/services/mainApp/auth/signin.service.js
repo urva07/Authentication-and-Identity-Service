@@ -1,6 +1,6 @@
 const path = require('node:path');
 const ejs = require('ejs');
-const config = require('#src/config/config.js');
+const config = require('#src/config/config/index.js');
 const { ConflictError } = require('#src/errors/index.js');
 const { mysql: { getUserRepository } } = require('#src/repositories/index.js');
 const createEmailService = require('./email.service');
@@ -34,12 +34,15 @@ const createSigninService = ({
     }
 
     let productionEmailService;
-    const tokenSecret = config.auth.basic.signinAes256GcmTokenSecret;
 
-    const createEncryptionKey = () => createSigninTokenKey(tokenSecret);
+    const coalescingKey = createCoalescingKey({
+        db: "mysql",
+        repository: "userRepository",
+        method: "findByEmail"
+    });
 
     const createVerificationUrl = (token) => {
-        let verificationUrl = new URL(VERIFY_EMAIL_PATH, config.app.apiBaseUrl);
+        let verificationUrl = new URL(VERIFY_EMAIL_PATH, config.apps.mainApp.apiBaseUrl);
 
         if (!['http:', 'https:'].includes(verificationUrl.protocol)) {
             throw new Error('API_BASE_URL must be a valid HTTP(S) URL');
@@ -60,16 +63,11 @@ const createSigninService = ({
 
     const signin = async ({ email, password, name }, signal, logger = defaultLogger) => {
         logger.debug('Sign-in attempt started');
+        userRepository = userRepository || getUserRepository();
         const normalizedEmail = email.trim().toLowerCase();
-        const repository = userRepository || getUserRepository();
         const existingUser = await requestCoalescer(
-            createCoalescingKey({
-                db: "mysql",
-                repository: "userRepository",
-                method: "findByEmail",
-                args: [normalizedEmail]
-            }),
-            () => repository.findByEmail(normalizedEmail),
+            coalescingKey([normalizedEmail]),
+            () => userRepository.findByEmail(normalizedEmail),
             logger
         );
 
@@ -78,7 +76,7 @@ const createSigninService = ({
             throw new ConflictError('An account with this email already exists');
         }
 
-        const encryptionKey = createEncryptionKey();
+        const encryptionKey = createSigninTokenKey(config.auth.basic.signinAes256GcmTokenSecret);
         const passwordHash = await hashPassword(password, config.auth.basic.hashSaltRounds);
         const issuedAt = Math.floor(Date.now() / 1000);
         const tokenTtlSeconds = config.auth.basic.signinAes256GcmTokenTtlSeconds;

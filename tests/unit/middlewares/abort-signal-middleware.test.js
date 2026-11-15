@@ -7,11 +7,11 @@ const config = require('../../../src/config/config');
 const abortSignalMiddleware = require('../../../src/middlewares/abort-signal.middleware');
 
 describe('abort signal middleware', () => {
-    const originalTimeoutMs = config.app.externalApiTimeoutMs;
+    const originalTimeoutMs = config.apps.mainApp.externalApiTimeoutMs;
 
     afterEach(() => {
         jestApi.useRealTimers();
-        config.app.externalApiTimeoutMs = originalTimeoutMs;
+        config.apps.mainApp.externalApiTimeoutMs = originalTimeoutMs;
     });
 
     const createRequestResponse = () => {
@@ -23,7 +23,7 @@ describe('abort signal middleware', () => {
 
     test('aborts the request signal with a 504 reason when the deadline expires', () => {
         jestApi.useFakeTimers();
-        config.app.externalApiTimeoutMs = 25;
+        config.apps.mainApp.externalApiTimeoutMs = 25;
         const { req, res } = createRequestResponse();
         const next = jestApi.fn();
 
@@ -42,7 +42,7 @@ describe('abort signal middleware', () => {
 
     test('aborts the request signal when the client disconnects', () => {
         jestApi.useFakeTimers();
-        config.app.externalApiTimeoutMs = 1000;
+        config.apps.mainApp.externalApiTimeoutMs = 1000;
         const { req, res } = createRequestResponse();
         const next = jestApi.fn();
 
@@ -56,7 +56,7 @@ describe('abort signal middleware', () => {
 
     test('clears its deadline after the response finishes', () => {
         jestApi.useFakeTimers();
-        config.app.externalApiTimeoutMs = 1000;
+        config.apps.mainApp.externalApiTimeoutMs = 1000;
         const { req, res } = createRequestResponse();
 
         abortSignalMiddleware(req, res, jestApi.fn());

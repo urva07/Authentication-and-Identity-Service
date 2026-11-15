@@ -137,6 +137,12 @@ The ID must be the UUID returned in the successful `/v1/auth/verify` response.
 GET looks up the current profile by ID; PATCH updates that same user.
 Unknown users receive 404. A lookup by ID returns the full profile for the
 authenticated user's own ID, and only public fields for another user.
+Profile reads use the user-cache Redis instance with separate `profile:` keys
+and a five-minute TTL, falling back to MySQL on a cache miss. Profile updates
+invalidate the corresponding entry, and Redis errors are returned to the caller.
+If invalidation fails after a MySQL update, the update has already committed and
+the old cache entry can remain until expiry. Cached profiles contain private
+data, so protect Redis access and persistence accordingly.
 
 For ingress authentication, set `INGRESS_SHARED_SECRET` to a separate random
 secret of at least 32 bytes and configure the ingress to send the same secret
@@ -239,39 +245,66 @@ is needed.
 ### Load testing with k6
 
 Install [Grafana k6](https://grafana.com/docs/k6/latest/set-up/install-k6/) and
-start the service in an isolated, non-production environment. The scripts use
-k6's `__ENV` to read exported environment variables. `K6_BASE_URL` is optional
-and defaults to `http://127.0.0.1:3000`.
+start the service in an isolated, non-production environment. Use the single
+`tests/load/route.js` script to test a route by setting k6 environment variables:
 
-The login script requires `LOGIN_TEST_USER_EMAIL` and
-`LOGIN_TEST_USER_PASSWORD` for a dedicated existing test account. The signin
-script requires `SIGNIN_TEST_USER_EMAIL`, `SIGNIN_TEST_USER_PASSWORD`, and
-`SIGNIN_TEST_USER_NAME`. Signin requests can create accounts or otherwise change
-test data, so use disposable data and check the application's behavior before
-running it.
+- `K6_BASE_URL` (optional): API base URL; defaults to `http://127.0.0.1:3000`.
+- `K6_PATH` (required): route path beginning with `/`, such as `/v1/auth/login`.
+  The previous `K6_ROUTE` name is also supported if `K6_PATH` is unset.
+- `K6_METHOD` (optional): HTTP method; defaults to `POST`.
+- Route-specific payload variables: JSON request bodies selected from `K6_METHOD`
+  and `K6_PATH`, as described below. `K6_PAYLOAD`, if set, overrides the
+  route-specific payload.
+- `K6_EXPECTED_STATUS` (optional): expected HTTP response status; defaults to `200`.
+- `K6_VUS` and `K6_DURATION` (optional): load settings; default to one virtual
+  user for `60s`. For safety, `K6_VUS` is limited to 20 and `K6_DURATION` to
+  10 minutes (specified in seconds or minutes).
 
-For example, if `tests/load/.env` is trusted and contains shell-compatible
-assignments, export it in a subshell and run either script from the repository
-root:
+Sample payloads for all registered routes are in `tests/load/.env.example`.
+Copy the assignments to `tests/load/.env` and replace placeholder credentials,
+tokens and IDs with disposable test values. The local `.env` is ignored by Git.
+
+The script selects `K6_METHOD_<METHOD>_PATH_<PATH>_PAYLOAD`: the method is
+uppercased, the query string is excluded, and each non-alphanumeric character in
+the path becomes `_`. For example, `POST /v1/auth/login` selects
+`K6_METHOD_POST_PATH__v1_auth_login_PAYLOAD`, and `POST
+/v1/auth/forgot-password` selects
+`K6_METHOD_POST_PATH__v1_auth_forgot_password_PAYLOAD`. Different paths that
+normalize to the same key share a payload; use `K6_PAYLOAD` to override it.
+An unset or empty payload sends no request body. For a route containing an ID,
+replace the ID in both the path and its payload variable name.
+
+For example, after configuring the login payload, run from the repository root:
 
 ```sh
 (
   set -a
-  source ./tests/load/.env && k6 run ./tests/load/login.js
+  source ./tests/load/.env &&
+    K6_METHOD=POST K6_PATH=/v1/auth/login k6 run tests/load/route.js
 )
 ```
 
-Replace `login.js` with `signin.js` to run the signin scenario. Sourcing a file
-executes its contents; do not source an untrusted file. Alternatively, export the
-variables in your shell before running k6. Keep test credentials out of version
-control.
+For another route, set `K6_METHOD` and `K6_PATH` to select its payload. The
+script checks the response status and enforces check-rate and p95 response-time
+thresholds. It does not configure authentication headers or cookies; routes
+requiring credentials beyond the body need additional request configuration.
 
-The login scenario starts with 20 virtual users and runs for 60 seconds; the
-signin scenario uses one virtual user for 240 seconds. Both sleep between
-requests and enforce check, error-rate, and p95 response-time thresholds. Do not
-run load scenarios against production or shared environments; run them only
-with authorization and while monitoring rate limits, the service, and its
-backing stores.
+Alternatively, store the selection and other `K6_*` variables in the trusted,
+shell-compatible `tests/load/.env` file and run:
+
+```sh
+(
+  set -a
+  source ./tests/load/.env && k6 run tests/load/route.js
+)
+```
+
+Sourcing a file executes its contents; do not source an untrusted file. Keep
+test credentials out of version control. Some routes, such as signin, may create
+accounts or otherwise change data; use dedicated test credentials and disposable
+data. Do not run load scenarios against production or shared environments; run
+them only with authorization and while monitoring rate limits, the service, and
+its backing stores.
 
 ## Logging
 

@@ -27,7 +27,7 @@ const {
 } = require('./lib');
 
 
-const PORT = config.app.port;
+const PORT = config.apps.mainApp.port;
 
 let server;
 let healthServer;
@@ -42,11 +42,11 @@ app.locals.requestCount = 0;
 const startServer = async () => {
     healthServer = await new Promise((resolve, reject) => {
         const listeningServer = healthApp.listen(
-            config.healthApp.port,
+            config.apps.healthApp.port,
             () => {
                 logger.info(
                     {
-                        port: config.healthApp.port
+                        port: config.apps.healthApp.port
                     },
                     'Health application server started'
                 );
@@ -66,7 +66,7 @@ const startServer = async () => {
         const listeningServer = app.listen(PORT, () => {
             logger.info(
                 {
-                    environment: config.app.environment,
+                    environment: config.apps.mainApp.environment,
                     port: PORT,
                     url: 'http://localhost:' + PORT
                 },
@@ -78,11 +78,11 @@ const startServer = async () => {
         listeningServer.once('error', reject);
     });
 
-    server.setTimeout(config.app.connectionInactivityTimeoutMs);
-    server.keepAliveTimeout = config.app.connectionKeepAliveTimeoutMs;
-    server.headersTimeout = config.app.reqHeadersTimeoutMs;
-    server.requestTimeout = config.app.reqTimeoutMs;
-    server.maxConnections = config.app.maxConnections;
+    server.setTimeout(config.apps.mainApp.connectionInactivityTimeoutMs);
+    server.keepAliveTimeout = config.apps.mainApp.connectionKeepAliveTimeoutMs;
+    server.headersTimeout = config.apps.mainApp.reqHeadersTimeoutMs;
+    server.requestTimeout = config.apps.mainApp.reqTimeoutMs;
+    server.maxConnections = config.apps.mainApp.maxConnections;
 
     server.on('connection', (socket) => {
         logger.info(
@@ -132,24 +132,12 @@ const shutdown = async (signal) => {
 
     const errors = [];
 
-    if (healthServer) {
-        new Promise((resolve) => {
-            healthServer.close((error) => {
-                if (error) {
-                    errors.push(error);
-                    logger.error(
-                        { err: error },
-                        'Failed to close health application server'
-                    );
-                }
-
-                resolve();
-            });
-
-            // Health checks are short-lived, so drop any lingering keep-alive sockets
-            healthServer.closeAllConnections();
-        });
-    }
+    const forceCloseTimer = setTimeout(() => {
+        server?.closeAllConnections();
+        healthServer?.closeAllConnections();
+        logger.warn('Force-closing all remaining connections as the grace period has expired');
+    }, config.shutdown.forceCloseTimeoutMs);
+    forceCloseTimer.unref();
 
     if (server) {
         const serverClosed = new Promise((resolve) => {
@@ -168,17 +156,28 @@ const shutdown = async (signal) => {
         server.closeIdleConnections();
         destroyIdleSockets();
 
-        // Safety net: force-close any socket still open after a grace period
-        const forceCloseTimer = setTimeout(() => {
-            server.closeAllConnections();
-            healthServer?.closeAllConnections();
-            logger.warn('Force-closing all remaining connections as the grace period has expired');
-        }, 30000);
-        forceCloseTimer.unref();
-
         await serverClosed;
 
         clearTimeout(forceCloseTimer);
+    }
+
+    if (healthServer) {
+        await new Promise((resolve) => {
+            healthServer.close((error) => {
+                if (error) {
+                    errors.push(error);
+                    logger.error(
+                        { err: error },
+                        'Failed to close health application server'
+                    );
+                }
+
+                resolve();
+            });
+
+            // Health checks are short-lived, so drop any lingering keep-alive sockets
+            healthServer.closeAllConnections();
+        });
     }
 
     logger.info('Closed all active connections. You may further get logs from the asynchronous close event of the connections.');
@@ -186,9 +185,9 @@ const shutdown = async (signal) => {
     logger.info('Closing database connections');
 
     const closeConnections = [
-        () => connections?.mongo?.close(),
-        () => connections?.mysql?.close(),
-        () => connections?.redis?.quit()
+        () => { connections?.mongo?.close(); logger.info('Closed MongoDB connection'); },
+        () => { connections?.mysql?.close(); logger.info('Closed MySQL connection'); },
+        () => { connections?.redis?.quit(); logger.info('Closed Redis connection'); }
     ];
 
     const closeResults = await Promise.allSettled(
@@ -206,9 +205,15 @@ const shutdown = async (signal) => {
     }
 
     process.exitCode = errors.length > 0 || process.exitCode ? 1 : 0;
-    logger.info('Shutdown completed');
-    process.exit();
 };
+
+process.on('beforeExit', (code) => {
+    logger.info({ code }, 'Event loop drained');
+});
+
+process.on('exit', (code) => {
+    console.log('Node.js process exiting:', code);
+});
 
 process.on('SIGTERM', () => {
     shutdown('SIGTERM').catch((error) => {

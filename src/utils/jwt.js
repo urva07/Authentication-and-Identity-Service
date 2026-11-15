@@ -1,5 +1,5 @@
 const jwt = require("jsonwebtoken");
-const config = require('#src/config/config.js');
+const config = require('#src/config/config/index.js');
 const { generateUUID } = require('./userIdGenerator.js');
 
 
