@@ -16,7 +16,7 @@ let {
     } 
 } = require('#src/infrastructure/database/index.js');
 const requestCoalescer = require('#src/lib/requestCoalescer.js')
-const createCoalescingKey = require('#src/lib/createCoalescingKey.js');
+const { createCoalescingKey } = require('#src/lib/index.js');
 
 
 const createGoogleOidcAuthenticationCallback = ({

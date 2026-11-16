@@ -1,7 +1,6 @@
 const createUserCacheRepository = (redis) => ({
     getById: async (userId) => {
         const data = await redis.get(`user:${userId}`);
-
         return data ? JSON.parse(data) : null;
     },
     setById: async (userId, user, ttl = 300) => {

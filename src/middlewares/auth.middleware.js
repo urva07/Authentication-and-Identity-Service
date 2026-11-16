@@ -8,7 +8,7 @@ const {
 } = require('#src/repositories/index.js');
 let logger = require('#src/utils/logger.js');
 const requestCoalescer = require('#src/lib/requestCoalescer.js')
-const createCoalescingKey = require('#src/lib/createCoalescingKey.js');
+const { createCoalescingKey } = require('#src/lib/index.js');
 
 
 const authenticationSources = ['header', 'cookie'];

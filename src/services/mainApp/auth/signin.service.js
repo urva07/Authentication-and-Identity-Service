@@ -10,7 +10,7 @@ const { createSigninTokenKey } = require('#src/utils/signinTokenKey.js');
 const defaultLogger = require('#src/utils/logger.js');
 const { generateUUID } = require('#src/utils/userIdGenerator.js');
 const requestCoalescer = require('#src/lib/requestCoalescer.js')
-const createCoalescingKey = require('#src/lib/createCoalescingKey.js');
+const { createCoalescingKey } = require('#src/lib/index.js');
 
 
 const VERIFY_EMAIL_PATH = '/v1/auth/verify-email';

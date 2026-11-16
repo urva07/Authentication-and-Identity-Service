@@ -12,7 +12,7 @@ const { generatePasswordResetToken, verifyJWTtoken } = require('#src/utils/jwt.j
 const { PASSWORD_RESET_PURPOSE } = require('#src/constants/auth.js');
 const defaultLogger = require('#src/utils/logger.js');
 const requestCoalescer = require('#src/lib/requestCoalescer.js')
-const createCoalescingKey = require('#src/lib/createCoalescingKey.js');
+const { createCoalescingKey } = require('#src/lib/index.js');
 
 
 const CHANGE_PASSWORD_PATH = '/v1/auth/change-password';

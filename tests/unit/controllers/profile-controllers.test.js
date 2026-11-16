@@ -35,20 +35,37 @@ describe('me controller', () => {
         expect(res.json).toHaveBeenCalledWith({ success: true, data: { profile } });
     });
 
+    test('delete calls the service and returns success', async () => {
+        const service = { deleteMyProfile: jestApi.fn().mockResolvedValue(undefined) };
+        const req = { user: { id: 'u1' }, log: {} };
+        const res = createRes();
+        const next = jestApi.fn();
+
+        await createMeController(service).delete(req, res, next);
+
+        expect(service.deleteMyProfile).toHaveBeenCalledWith(req.user, req.log);
+        expect(res.status).toHaveBeenCalledWith(200);
+        expect(res.json).toHaveBeenCalledWith({ success: true });
+        expect(next).not.toHaveBeenCalled();
+    });
+
     test('forwards service errors', async () => {
         const error = new Error('boom');
         const service = {
             getMyProfile: jestApi.fn().mockRejectedValue(error),
-            updateMyProfile: jestApi.fn().mockRejectedValue(error)
+            updateMyProfile: jestApi.fn().mockRejectedValue(error),
+            deleteMyProfile: jestApi.fn().mockRejectedValue(error)
         };
         const controller = createMeController(service);
         const next = jestApi.fn();
 
         await controller.get({}, createRes(), next);
         await controller.patch({}, createRes(), next);
+        await controller.delete({}, createRes(), next);
 
         expect(next).toHaveBeenNthCalledWith(1, error);
         expect(next).toHaveBeenNthCalledWith(2, error);
+        expect(next).toHaveBeenNthCalledWith(3, error);
     });
 });
 

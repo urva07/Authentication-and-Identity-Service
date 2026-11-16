@@ -32,6 +32,11 @@ router.patch(
     validators['profile.validator'].patch,
     meController.patch
 );
+router.delete(
+    '/me',
+    profileIdentityMiddleware,
+    meController.delete
+);
 router.get(
     '/:id',
     profileIdentityMiddleware,

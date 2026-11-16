@@ -4,7 +4,7 @@ const { verifyPassword } = require('#src/utils/hashPasswordAndVerify.js');
 const { AuthenticationError } = require('#src/errors/index.js');
 const logger = require('#src/utils/logger.js');
 const requestCoalescer = require('#src/lib/requestCoalescer.js')
-const createCoalescingKey = require('#src/lib/createCoalescingKey.js');
+const { createCoalescingKey } = require('#src/lib/index.js');
 
 
 const createBasicAuthenticationCallback = ({

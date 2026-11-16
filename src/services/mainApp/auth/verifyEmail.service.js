@@ -18,7 +18,7 @@ let {
 } = require('#src/infrastructure/database/index.js');
 const defaultLogger = require('#src/utils/logger.js');
 const requestCoalescer = require('#src/lib/requestCoalescer.js')
-const createCoalescingKey = require('#src/lib/createCoalescingKey.js');
+const { createCoalescingKey } = require('#src/lib/index.js');
 
 
 const INVALID_LINK_MESSAGE = 'Invalid or expired verification link';

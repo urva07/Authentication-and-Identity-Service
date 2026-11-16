@@ -5,7 +5,7 @@ const { googleOidcStrategy } = require('./googleOidc.js');
 const { jwtStrategy } = require('./jwt.js');
 const { mysql: { getUserRepository } } = require('#src/repositories/index.js');
 const requestCoalescer = require('#src/lib/requestCoalescer.js')
-const createCoalescingKey = require('#src/lib/createCoalescingKey.js');
+const { createCoalescingKey } = require('#src/lib/index.js');
 
 
 const initializePassport = (session=true) => {

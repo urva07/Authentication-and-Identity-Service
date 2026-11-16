@@ -126,9 +126,10 @@ const shutdown = async (signal) => {
         return;
     }
 
-    logger.info({ signal }, 'Shutdown signal received');
     shuttingDown = true;
+    healthApp.locals.shuttingDown = shuttingDown;
     app.locals.shuttingDown = shuttingDown;
+    logger.info({ signal }, 'Shutdown signal received');
 
     const errors = [];
 
@@ -185,9 +186,18 @@ const shutdown = async (signal) => {
     logger.info('Closing database connections');
 
     const closeConnections = [
-        () => { connections?.mongo?.close(); logger.info('Closed MongoDB connection'); },
-        () => { connections?.mysql?.close(); logger.info('Closed MySQL connection'); },
-        () => { connections?.redis?.quit(); logger.info('Closed Redis connection'); }
+        () => { 
+            connections?.mongo?.close(); 
+            logger.info('Closed MongoDB connection'); 
+        },
+        () => { 
+            connections?.mysql?.close(); 
+            logger.info('Closed MySQL connection'); 
+        },
+        () => { 
+            connections?.redis?.quit(); 
+            logger.info('Closed Redis connection'); 
+        }
     ];
 
     const closeResults = await Promise.allSettled(
