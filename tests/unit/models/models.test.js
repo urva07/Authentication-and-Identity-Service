@@ -22,7 +22,8 @@ describe('MySQL user models', () => {
         expect(Object.keys(models)).toEqual([
             'User',
             'UserPassword',
-            'IdentityProvider'
+            'IdentityProvider',
+            'ActiveToken'
         ]);
         expect(models.User.tableName).toBe('users');
         expect(models.UserPassword.tableName).toBe('user_passwords');

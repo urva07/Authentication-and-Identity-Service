@@ -1,3 +1,15 @@
-/*
- * Global Jest setup.
- */
+process.env.environment = 'test';
+process.env.MYSQL_USER ||= 'test';
+process.env.MYSQL_PASSWORD ||= 'test';
+process.env.MYSQL_HOST ||= '127.0.0.1';
+process.env.MYSQL_DATABASE ||= 'test';
+process.env.SESSION_REDIS_HOST ||= '127.0.0.1';
+process.env.USER_CACHE_REDIS_HOST ||= '127.0.0.1';
+process.env.RATE_LIMIT_REDIS_HOST ||= '127.0.0.1';
+process.env.BASIC_SIGNIN_AES_256_GCM_TOKEN_SECRET ||= 'test-signin-secret-with-at-least-32-bytes';
+process.env.JWT_ACCESS_TOKEN_SECRET ||= 'test-access-secret-with-at-least-32-bytes';
+process.env.JWT_REFRESH_TOKEN_SECRET ||= 'test-refresh-secret-with-at-least-32-bytes';
+process.env.SESSION_SECRET ||= 'test-session-secret-with-at-least-32-bytes';
+process.env.OIDC_GOOGLE_CLIENT_ID ||= 'test-client-id';
+process.env.OIDC_GOOGLE_CLIENT_SECRET ||= 'test-client-secret';
+process.env.OIDC_GOOGLE_CALLBACK_URL ||= 'http://localhost:3000/callback';

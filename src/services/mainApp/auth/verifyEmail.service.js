@@ -9,7 +9,7 @@ const {
 } = require('#src/repositories/index.js');
 const { verifyAes256GcmTokenWithExpiry } = require('#src/utils/aes256GcmToken.js');
 const { createSigninTokenKey } = require('#src/utils/signinTokenKey.js');
-let { 
+const { 
     dbs: { 
         mysql: { 
             sequelize
@@ -27,7 +27,7 @@ const NAME_MAX_LENGTH = 100;
 const createVerifyEmailService = ({
     userRepository,
     userPasswordRepository,
-    mysqlSequelizeClient
+    mysqlSequelizeClient = sequelize
 } = {}) => {
     if (
         userRepository !== undefined &&
@@ -46,7 +46,7 @@ const createVerifyEmailService = ({
         throw new TypeError('Verify email service requires a user password repository');
     }
 
-    sequelize = mysqlSequelizeClient || sequelize;
+    
     const encryptionKey = createSigninTokenKey(config.auth.basic.signinAes256GcmTokenSecret);
 
     const coalescingKey = createCoalescingKey({
@@ -105,7 +105,7 @@ const createVerifyEmailService = ({
         const { firstName, lastName } = splitName(name);
 
         try {
-            await sequelize.transaction(async (transaction) => {
+            await mysqlSequelizeClient.transaction(async (transaction) => {
                 const createdUser = await userRepository.create(
                     { 
                         id: sub, 

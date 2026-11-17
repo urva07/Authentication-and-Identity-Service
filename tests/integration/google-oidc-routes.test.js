@@ -44,7 +44,7 @@ describe('Google OIDC routes', () => {
         expect(response.statusCode).toBe(200);
         expect(response.body).toEqual({
             success: true,
-            data: { id: '42', email: 'ada@example.com' }
+            user: { id: '42', email: 'ada@example.com' }
         });
     });
 

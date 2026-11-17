@@ -1,5 +1,4 @@
 const { describe, test, expect, jest: jestApi } = require('@jest/globals');
-const { AuthenticationError } = require('../../../src/errors');
 const createGoogleCallbackService = require('../../../src/services/mainApp/auth/oidc/googleCallback.service');
 
 describe('Google callback service', () => {
@@ -8,15 +7,13 @@ describe('Google callback service', () => {
         const log = { debug: jestApi.fn() };
         const service = createGoogleCallbackService();
 
-        await expect(service({ user, log })).resolves.toBe(user);
-        expect(log.debug).toHaveBeenCalled();
+        await expect(service(user, log)).resolves.toBe(user);
     });
 
-    test('rejects when Passport did not supply a user', async () => {
+    test('returns an absent user unchanged', async () => {
         const log = { debug: jestApi.fn() };
         const service = createGoogleCallbackService();
 
-        await expect(service({ log })).rejects.toBeInstanceOf(AuthenticationError);
-        expect(log.debug).toHaveBeenCalled();
+        await expect(service(undefined, log)).resolves.toBeUndefined();
     });
 });

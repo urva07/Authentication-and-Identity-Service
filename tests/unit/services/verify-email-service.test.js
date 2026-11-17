@@ -156,10 +156,12 @@ describe('verify email service', () => {
         await expect(service.verifyEmail(createToken())).rejects.toBe(error);
     });
 
-    test('fails when the encryption secret is missing or weak', async () => {
+    test('fails when the encryption secret is missing or weak', () => {
         config.auth.basic.signinAes256GcmTokenSecret = 'too-short';
 
-        await expect(service.verifyEmail(createToken())).rejects.toThrow(
+        expect(() => createVerifyEmailService({
+            userRepository, userPasswordRepository, mysqlSequelizeClient: sequelize
+        })).toThrow(
             'Sign-in token encryption requires a secret of at least 32 bytes'
         );
     });

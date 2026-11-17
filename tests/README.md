@@ -15,16 +15,12 @@ npx jest tests/unit/services/signin-service.test.js -t "conflict"
 ```
 
 `jest.config.js` runs every `tests/**/*.test.js` file in the Node environment,
-loads `tests/setup.js` before each test file (global setup; currently empty) and
+loads `tests/setup.js` before each test file (test-only configuration defaults) and
 collects coverage from `src/**/*.js`, excluding `index.js` files.
 
-Importing code that reaches `src/infrastructure/database` requires the MySQL
-settings (`MYSQL_USER`, `MYSQL_PASSWORD`, `MYSQL_HOST`, `MYSQL_DATABASE`) to be
-set, otherwise the import throws `MySQL configuration is incomplete`. This
-affects tests that load the whole application (the integration tests) and the
-services that import the database module directly, such as the verify-email and
-change-password services. Tests never need a running database, Redis or mail
-server: they use stubs.
+Test setup supplies local placeholder configuration when required settings are
+unset. Tests use stubs and do not require a running database, Redis or mail
+server. Existing environment values take precedence over the placeholders.
 
 ## Layout
 

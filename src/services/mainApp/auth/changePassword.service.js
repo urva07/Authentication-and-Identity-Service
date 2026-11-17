@@ -29,7 +29,7 @@ const createChangePasswordService = ({
     userRepository,
     userPasswordRepository,
     activeTokenRepository,
-    mysqlSequelizeClient
+    mysqlSequelizeClient = sequelize
 } = {}) => {
     if (
         userRepository !== undefined &&
@@ -111,9 +111,8 @@ const createChangePasswordService = ({
         const passwords = userPasswordRepository || getUserPasswordRepository();
         const tokens = activeTokenRepository || getActiveTokenRepository();
         const passwordHash = await hashPassword(newPassword);
-        sequelize = mysqlSequelizeClient || sequelize;
 
-        await sequelize.transaction(async (transaction) => {
+        await mysqlSequelizeClient.transaction(async (transaction) => {
             const user = await users.findById(payload.sub, {
                 transaction,
                 lock: transaction.LOCK.UPDATE

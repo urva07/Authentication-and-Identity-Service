@@ -18,6 +18,7 @@ describe('Health probe routes', () => {
     );
 
     test('GET /metrics returns Prometheus process metrics', async () => {
+        await request(app).get('/live');
         const response = await request(app).get('/metrics');
 
         expect(response.statusCode).toBe(200);
@@ -30,13 +31,13 @@ describe('Health probe routes', () => {
         expect(response.text).toContain('# HELP http_request_duration_seconds');
         expect(response.text).toContain('# HELP http_failed_requests_total');
         expect(response.text).toMatch(
-            /http_requests_total\{method="GET",status_code="501"\} [1-9]\d*/
+            /http_requests_total\{method="GET",status_code="501",path="\/live"[^}]*\} [1-9]\d*/
         );
         expect(response.text).toMatch(
-            /http_failed_requests_total\{method="GET",status_code="501"\} [1-9]\d*/
+            /http_failed_requests_total\{method="GET",status_code="501",path="\/live"[^}]*\} [1-9]\d*/
         );
         expect(response.text).toMatch(
-            /http_request_duration_seconds_count\{method="GET",status_code="501"\} [1-9]\d*/
+            /http_request_duration_seconds_count\{method="GET",status_code="501",path="\/live"\} [1-9]\d*/
         );
     });
 });

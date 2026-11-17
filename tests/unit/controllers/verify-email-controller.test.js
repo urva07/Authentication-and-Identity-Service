@@ -3,6 +3,7 @@ const createVerifyEmailController = require('../../../src/controllers/mainApp/v1
 
 describe('verify email controller', () => {
     const createResponse = () => ({
+        cookie: jestApi.fn(),
         status: jestApi.fn().mockReturnThis(),
         json: jestApi.fn()
     });
@@ -10,7 +11,12 @@ describe('verify email controller', () => {
     test('passes the query token to the service and returns the created user', async () => {
         const user = { id: 'user-id', email: 'ada@example.com' };
         const verifyEmailService = {
-            verifyEmail: jestApi.fn().mockResolvedValue(user)
+            verifyEmail: jestApi.fn().mockResolvedValue({
+                conflict: false,
+                accessToken: 'access',
+                refreshToken: 'refresh',
+                response: { success: true, user }
+            })
         };
         const controller = createVerifyEmailController(verifyEmailService);
         const res = createResponse();
@@ -28,11 +34,8 @@ describe('verify email controller', () => {
             requestLogger
         );
         expect(res.status).toHaveBeenCalledWith(201);
-        expect(res.json).toHaveBeenCalledWith({
-            success: true,
-            message: 'Email verified successfully. You can now log in.',
-            user
-        });
+        expect(res.cookie).toHaveBeenCalledTimes(2);
+        expect(res.json).toHaveBeenCalledWith({ success: true, user });
         expect(next).not.toHaveBeenCalled();
     });
 

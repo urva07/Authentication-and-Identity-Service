@@ -2,7 +2,6 @@ const { describe, beforeEach, jest: jestApi, afterAll, test, expect } = require(
 const jwt = require('jsonwebtoken');
 const { AuthenticationError } = require('../../../src/errors');
 const config = require('../../../src/config/config');
-const { configureRepositories } = require('../../../src/repositories');
 const authenticate = require('../../../src/middlewares/auth.middleware');
 
 describe('authentication middleware', () => {
@@ -11,17 +10,14 @@ describe('authentication middleware', () => {
         access: config.auth.jwt.jwtAccessTokenSecret,
         refresh: config.auth.jwt.jwtRefreshTokenSecret
     };
-    let findByPk;
+    let findById;
+    let userRepository;
 
     beforeEach(() => {
         config.auth.jwt.jwtAccessTokenSecret = jwtSecret;
         config.auth.jwt.jwtRefreshTokenSecret = jwtSecret;
-        findByPk = jestApi.fn().mockImplementation((id) => ({ id }));
-        configureRepositories({
-            User: { findByPk },
-            UserPassword: {},
-            IdentityProvider: {}
-        });
+        findById = jestApi.fn().mockImplementation(async (id) => ({ id }));
+        userRepository = { findById };
     });
 
     afterAll(() => {
@@ -36,10 +32,10 @@ describe('authentication middleware', () => {
         };
         const next = jestApi.fn();
 
-        await authenticate('cookie')(req, {}, next);
+        await authenticate({ source: 'cookie', userRepository })(req, {}, next);
 
         expect(req.user).toEqual({ id: '42' });
-        expect(findByPk).toHaveBeenCalledWith('42', {});
+        expect(findById).toHaveBeenCalledWith('42');
         expect(next).toHaveBeenCalledWith();
     });
 
@@ -48,7 +44,7 @@ describe('authentication middleware', () => {
         const req = { headers: { authorization: `Bearer ${token}` } };
         const next = jestApi.fn();
 
-        await authenticate('header')(req, {}, next);
+        await authenticate({ source: 'header', userRepository })(req, {}, next);
 
         expect(req.user).toEqual({ id: '42' });
         expect(next).toHaveBeenCalledWith();
@@ -58,7 +54,7 @@ describe('authentication middleware', () => {
         const token = jwt.sign({ sub: '42' }, jwtSecret);
         const next = jestApi.fn();
 
-        await authenticate('header')({
+        await authenticate({ source: 'header', userRepository })({
             headers: {},
             cookies: { [config.auth.jwt.cookieOptions.access.name]: token }
         }, {}, next);
@@ -71,7 +67,7 @@ describe('authentication middleware', () => {
         const token = jwt.sign({ sub: '42' }, jwtSecret);
         const next = jestApi.fn();
 
-        await authenticate('header')({
+        await authenticate({ source: 'header', userRepository })({
             headers: { authorization: `Basic ${token}` }
         }, {}, next);
 
@@ -82,7 +78,7 @@ describe('authentication middleware', () => {
     test('rejects invalid tokens from the configured source', async () => {
         const next = jestApi.fn();
 
-        await authenticate('cookie')({
+        await authenticate({ source: 'cookie', userRepository })({
             cookies: {
                 [config.auth.jwt.cookieOptions.access.name]: 'invalid'
             }
@@ -100,7 +96,7 @@ describe('authentication middleware', () => {
         config.auth.jwt.jwtAccessTokenSecret = undefined;
         const next = jestApi.fn();
 
-        await authenticate('cookie')({
+        await authenticate({ source: 'cookie', userRepository })({
             cookies: {
                 [config.auth.jwt.cookieOptions.access.name]: token
             }
@@ -112,6 +108,6 @@ describe('authentication middleware', () => {
     });
 
     test('rejects an unsupported authentication source', () => {
-        expect(() => authenticate('query')).toThrow(TypeError);
+        expect(() => authenticate({ source: 'query' })).toThrow(TypeError);
     });
 });

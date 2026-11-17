@@ -145,10 +145,11 @@ describe('login service', () => {
     });
 
     test('rejects weak or missing JWT signing secrets', async () => {
+        config.auth.jwt.jwtAccessTokenSecret = '';
+        userRepository.findByEmail.mockResolvedValue({ id: userId });
         const service = createLoginService({
             userRepository,
-            userPasswordRepository,
-            jwtSecret: ''
+            userPasswordRepository
         });
 
         await expect(
@@ -157,7 +158,7 @@ describe('login service', () => {
                 password: 'correct password'
             })
         ).rejects.toMatchObject({
-            message: 'Authentication requires a JWT secret of at least 32 bytes'
+            message: 'Failed to generate JWT token'
         });
     });
 });

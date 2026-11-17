@@ -11,12 +11,12 @@ const run = (handler, req) => {
 describe('profile validator', () => {
     test('getById accepts a uuid', () => {
         const id = 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11';
-        const { error } = run(validator.getById, { params: { id } });
+        const { error } = run(validator.get, { params: { id } });
         expect(error).toBeUndefined();
     });
 
     test('getById rejects a non-uuid', () => {
-        const { error } = run(validator.getById, { params: { id: 'abc' } });
+        const { error } = run(validator.get, { params: { id: 'abc' } });
         expect(error).toBeInstanceOf(ValidationError);
     });
 

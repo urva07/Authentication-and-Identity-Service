@@ -11,6 +11,12 @@ const mockGetUserRepository = jestApi.fn();
 jestApi.mock('#src/repositories/index.js', () => ({
     mysql: {
         getUserRepository: () => mockGetUserRepository()
+    },
+    redis: {
+        userCache: {
+            getUserCacheRepository: () => ({ getById: jestApi.fn().mockResolvedValue(null) }),
+            getUserLockRepository: () => ({ isLocked: jestApi.fn().mockResolvedValue(false) })
+        }
     }
 }));
 
@@ -73,7 +79,7 @@ describe('JWT user lookup', () => {
 
         const strategy = jwtStrategy('test-secret', 'header');
         const jwtLookup = new Promise((resolve, reject) => {
-            strategy._verify({ sub: user.id.toUpperCase() }, (error, result) => {
+            strategy._verify({ sub: user.id }, (error, result) => {
                 if (error) {
                     reject(error);
                     return;

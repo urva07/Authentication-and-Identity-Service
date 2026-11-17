@@ -4,6 +4,9 @@ const config = require('../../src/config/config');
 
 jestApi.mock('../../src/services', () => ({
     'mainApp.services': {
+        'profile.services': {
+            'profile.service': () => ({})
+        },
         'auth.services': {
             'passport-login.service': () => ({
                 loginUser: jestApi.fn().mockResolvedValue({
@@ -26,8 +29,10 @@ jestApi.mock('../../src/services', () => ({
             }),
             'verify-email.service': () => ({
                 verifyEmail: jestApi.fn().mockResolvedValue({
-                    id: '1',
-                    email: 'ada@example.com'
+                    conflict: false,
+                    accessToken: 'test-access-token',
+                    refreshToken: 'test-refresh-token',
+                    response: { success: true, user: { id: '1', email: 'ada@example.com' } }
                 })
             }),
             'refresh.service': () => ({
@@ -54,13 +59,16 @@ jestApi.mock('../../src/services', () => ({
 
 jestApi.mock('../../src/repositories', () => ({
     ...jestApi.requireActual('../../src/repositories'),
-    getUserRepository: () => ({
-        findByEmailWithPassword: jestApi.fn().mockResolvedValue({
-            id: '1',
-            email: 'ada@example.com',
-            password: { passwordHash: 'hash' }
+    mysql: {
+        ...jestApi.requireActual('../../src/repositories').mysql,
+        getUserRepository: () => ({
+            findByEmailWithPassword: jestApi.fn().mockResolvedValue({
+                id: '1',
+                email: 'ada@example.com',
+                password: { passwordHash: 'hash' }
+            })
         })
-    })
+    }
 }));
 
 jestApi.mock('../../src/utils/hashPasswordAndVerify.js', () => ({
