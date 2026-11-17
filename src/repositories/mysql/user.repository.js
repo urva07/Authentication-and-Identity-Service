@@ -25,6 +25,18 @@ const createUserRepository = ({
             ...options 
         }
     ),
+    createButIgnoreIfExists: (
+        attributes, 
+        options = {}
+    ) => User.create(
+        attributes,
+        {
+            ignoreDuplicates: true,
+            benchmark: true,
+            logging: createQueryLogger('createButIgnoreIfExists', 'User'),
+            ...options
+        }
+    ),
     findByEmailOrCreate: (
         email, 
         defaults, 

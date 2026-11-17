@@ -22,3 +22,8 @@ allowlist of token type and JWT ID pairs with an expiry and an optional user
 reference. User-bound tokens are deleted when their user is deleted; the
 expiry index supports cleanup. Password-reset token issuance and single-use
 consumption use this table; expired-token cleanup is not yet implemented.
+
+`20261117053000-change-idp-provider-to-enum.js` changes `user_idps.provider`
+from `VARCHAR(50)` to `ENUM('google')` to match the model. Run it only after
+confirming every existing `provider` value is `google`; MySQL rejects the
+change otherwise. The unique `unique_idp` index is preserved.

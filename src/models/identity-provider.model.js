@@ -14,7 +14,7 @@ const defineIdentityProvider = (sequelize) =>
                 allowNull: false
             },
             provider: {
-                type: DataTypes.STRING(50),
+                type: DataTypes.ENUM('google'),
                 allowNull: false
             },
             providerUserId: {
