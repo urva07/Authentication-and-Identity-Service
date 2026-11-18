@@ -56,8 +56,6 @@ services:
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_PASSWORD:?Set MYSQL_PASSWORD in .env}
       MYSQL_DATABASE: ${MYSQL_DATABASE:?Set MYSQL_DATABASE in .env}
-      MYSQL_USER: ***REMOVED***
-      MYSQL_PASSWORD: ***REMOVED***
     ports:
       - "3306:3306"
     volumes:
