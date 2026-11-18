@@ -130,6 +130,7 @@ const createGoogleOidcAuthenticationCallback = ({
 
                 await t.commit();
                 logger.debug('[Google OIDC] User and identity created; transaction committed.');
+                return done(null, user);
             } catch (error) {
                 await t.rollback();
                 logger.debug('[Google OIDC] User or identity creation failed; transaction rolled back.');

@@ -20,6 +20,7 @@ const createJwtAuthenticationCallback = ({
         try {
             logger.debug('[passport-jwt] Looking up user for JWT authentication');
             userRepository = userRepository || getUserRepository();
+            
             const args = [payload.sub]
             const user = await requestCoalescer(
                 coalescingKey(args),

@@ -24,69 +24,118 @@ const profile = {
     emails: [{ value: 'urva@example.com' }]
 };
 
-const setup = ({ identity = null, dbUser } = {}) => {
+const setup = ({
+    identity = null,
+    dbUser = {
+        id: 'persisted-user-id',
+        firstName: profile.name.givenName,
+        lastName: profile.name.familyName,
+        email: profile.emails[0].value
+    },
+    identityCreateError = null
+} = {}) => {
     const transaction = { commit: jestApi.fn(), rollback: jestApi.fn() };
     const userRepository = {
-        findByEmailOrCreate: jestApi.fn(async (email, defaults) => [dbUser || { id: defaults.id }, !dbUser])
+        createButIgnoreIfExists: jestApi.fn().mockResolvedValue(undefined),
+        findByEmail: jestApi.fn().mockResolvedValue(dbUser),
+        findById: jestApi.fn().mockResolvedValue(dbUser)
     };
     const identityProviderRepository = {
         findByProviderIdentity: jestApi.fn().mockResolvedValue(identity),
-        create: jestApi.fn().mockResolvedValue({})
+        create: identityCreateError
+            ? jestApi.fn().mockRejectedValue(identityCreateError)
+            : jestApi.fn().mockResolvedValue({})
     };
     const verify = createGoogleOidcAuthenticationCallback({
         userRepository,
         identityProviderRepository,
         mysqlSequelizeClient: { transaction: jestApi.fn().mockResolvedValue(transaction) }
     });
-    const run = () => new Promise((resolve) => {
-        verify('issuer', profile, (error, user) => resolve({ error, user }));
-    });
+    const run = () => {
+        let resolveResult;
+        const result = new Promise((resolve) => {
+            resolveResult = resolve;
+        });
+        const done = jestApi.fn((error, user) => resolveResult({ error, user }));
+
+        verify('issuer', profile, done);
+        return { done, result };
+    };
 
     return { userRepository, identityProviderRepository, transaction, run };
 };
 
 describe('Google OIDC authentication callback', () => {
-    test('links the identity to an existing user with the same email', async () => {
-        const { userRepository, identityProviderRepository, transaction, run } = setup({
-            dbUser: { id: 'existing-user-id' }
-        });
+    test('creates or reuses the user, creates the identity, commits, and completes Passport', async () => {
+        const { userRepository, identityProviderRepository, transaction, run } = setup();
+        const { done, result } = run();
 
-        const { error, user } = await run();
+        const { error, user } = await result;
 
         expect(error).toBeNull();
-        expect(userRepository.findByEmailOrCreate).toHaveBeenCalledWith(
+        expect(user).toEqual(expect.objectContaining({ id: 'persisted-user-id' }));
+        expect(userRepository.createButIgnoreIfExists).toHaveBeenCalledWith(
+            expect.objectContaining({
+                firstName: 'Urva',
+                lastName: 'Patel',
+                email: 'urva@example.com'
+            }),
+            { transaction }
+        );
+        expect(userRepository.findByEmail).toHaveBeenCalledWith(
             'urva@example.com',
-            expect.objectContaining({ firstName: 'Urva', lastName: 'Patel' }),
-            { transaction }
+            {
+                attributes: ['id', 'email', 'firstName', 'lastName'],
+                transaction
+            }
         );
         expect(identityProviderRepository.create).toHaveBeenCalledWith(
-            { userId: 'existing-user-id', provider: 'google', providerUserId: 'google-id' },
+            { userId: 'persisted-user-id', provider: 'google', providerUserId: 'google-id' },
             { transaction }
         );
-        expect(user.id).toBe('existing-user-id');
-        expect(transaction.commit).toHaveBeenCalled();
+        expect(transaction.commit).toHaveBeenCalledTimes(1);
+        expect(done).toHaveBeenCalledTimes(1);
+        expect(transaction.commit.mock.invocationCallOrder[0]).toBeLessThan(
+            done.mock.invocationCallOrder[0]
+        );
     });
 
-    test('creates a new user when the email is not registered', async () => {
-        const { userRepository, identityProviderRepository, run } = setup();
+    test('reuses the existing user when the Google identity already exists', async () => {
+        const { userRepository, identityProviderRepository, transaction, run } = setup({
+            identity: { userId: 'linked-user-id' },
+            dbUser: { id: 'linked-user-id', email: 'urva@example.com' }
+        });
+        const { done, result } = run();
 
-        const { error, user } = await run();
-        const [, defaults] = userRepository.findByEmailOrCreate.mock.calls[0];
+        const { error, user } = await result;
 
         expect(error).toBeNull();
-        expect(user.id).toBe(defaults.id);
-        expect(identityProviderRepository.create).toHaveBeenCalledWith(
-            expect.objectContaining({ userId: defaults.id }),
-            expect.anything()
+        expect(user.id).toBe('linked-user-id');
+        expect(userRepository.findById).toHaveBeenCalledWith(
+            'linked-user-id',
+            { attributes: ['id', 'email', 'firstName', 'lastName'] }
         );
+        expect(userRepository.createButIgnoreIfExists).not.toHaveBeenCalled();
+        expect(identityProviderRepository.create).not.toHaveBeenCalled();
+        expect(transaction.commit).not.toHaveBeenCalled();
+        expect(done).toHaveBeenCalledTimes(1);
     });
 
-    test('skips user creation when the identity already exists', async () => {
-        const { userRepository, run } = setup({ identity: { userId: 'linked-user-id' } });
+    test('treats a concurrent identity insert as already linked and completes Passport', async () => {
+        const duplicateError = new Error('Duplicate identity');
+        duplicateError.name = 'SequelizeUniqueConstraintError';
+        const { identityProviderRepository, transaction, run } = setup({
+            identityCreateError: duplicateError
+        });
+        const { done, result } = run();
 
-        const { user } = await run();
+        const { error, user } = await result;
 
-        expect(userRepository.findByEmailOrCreate).not.toHaveBeenCalled();
-        expect(user.id).toBe('linked-user-id');
+        expect(error).toBeNull();
+        expect(user.id).toBe('persisted-user-id');
+        expect(identityProviderRepository.create).toHaveBeenCalled();
+        expect(transaction.rollback).toHaveBeenCalledTimes(1);
+        expect(transaction.commit).not.toHaveBeenCalled();
+        expect(done).toHaveBeenCalledTimes(1);
     });
 });

@@ -11,6 +11,7 @@ const {
     }
 } = require('#src/controllers/index.js');
 
+
 const googleCallbackController = controllers['google-callback.controller']();
 
 router.get('/google', passport.authenticate('google'));
@@ -20,5 +21,6 @@ router.get(
     passport.authenticate('google', { failureRedirect: 'http://localhost:3000/login' }),
     googleCallbackController.get
 );
+
 
 module.exports = router;
