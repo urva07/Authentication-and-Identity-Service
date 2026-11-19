@@ -1,5 +1,5 @@
-const createUserCacheRepository = require('./userCache.repository');
-const createUserLockRepository = require('./userLock.repository');
+const createProfileCacheRepository = require('./profileCache.repository');
+const createUserExistenceRepository = require('./userExistence.repository'); 
 
 
 let repositories;
@@ -10,8 +10,8 @@ const configureRepositories = (redisCacheClient) => {
     }
 
     repositories = {
-        userCacheRepository: createUserCacheRepository(redisCacheClient),
-        userLockRepository: createUserLockRepository(redisCacheClient)
+        profileCacheRepository: createProfileCacheRepository(redisCacheClient),
+        userExistenceRepository: createUserExistenceRepository(redisCacheClient)
     };
 }
 
@@ -27,12 +27,12 @@ const getRepository = (name) => {
     return repositories[name];
 }
 
-const getUserCacheRepository = () => getRepository('userCacheRepository');
-const getUserLockRepository = () => getRepository('userLockRepository');
+const getprofileCacheRepository = () => getRepository('profileCacheRepository');
+const getUserExistenceRepository = () => getRepository('userExistenceRepository');
 
 
 module.exports = {
     configureRepositories,
-    getUserCacheRepository,
-    getUserLockRepository
+    getprofileCacheRepository,
+    getUserExistenceRepository
 };

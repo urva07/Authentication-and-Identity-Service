@@ -9,6 +9,7 @@ describe('authentication repositories', () => {
     const userId = '3f0c1d52-8a7e-4b1c-9d34-5e6f7a8b9c0d';
     const createModel = () => ({
         create: jestApi.fn(),
+        findOrCreate: jestApi.fn(),
         findByPk: jestApi.fn(),
         findOne: jestApi.fn(),
         findAll: jestApi.fn(),
@@ -52,6 +53,80 @@ describe('authentication repositories', () => {
         });
         expect(User.findOne).toHaveBeenNthCalledWith(1, {
             where: { email: 'ada@example.com' }, ...queryOptions
+        });
+    });
+
+    test('creates-but-ignores and find-or-creates users', async () => {
+        const User = createModel();
+        const user = userRepository({ User, createQueryLogger });
+        const attributes = {
+            id: userId,
+            email: 'ada@example.com',
+            firstName: 'Ada',
+            lastName: 'Lovelace'
+        };
+        User.create.mockResolvedValue(attributes);
+        User.findOrCreate.mockResolvedValue([attributes, true]);
+
+        await expect(
+            user.createButIgnoreIfExists(attributes, { transaction: 't' })
+        ).resolves.toEqual(attributes);
+        expect(User.create).toHaveBeenCalledWith(attributes, {
+            ignoreDuplicates: true,
+            transaction: 't',
+            ...queryOptions
+        });
+
+        await expect(
+            user.findByEmailOrCreate(
+                'ada@example.com',
+                attributes,
+                { transaction: 't' }
+            )
+        ).resolves.toEqual([attributes, true]);
+        expect(User.findOrCreate).toHaveBeenCalledWith({
+            benchmark: true,
+            logging: expect.any(Function),
+            where: { email: 'ada@example.com' },
+            defaults: attributes,
+            transaction: 't'
+        });
+    });
+
+    test('finds a user joined to a provider identity', async () => {
+        const User = createModel();
+        const IdentityProvider = createModel();
+        const user = userRepository({
+            User,
+            IdentityProvider,
+            createQueryLogger
+        });
+        const foundUser = {
+            id: userId,
+            email: 'ada@example.com',
+            firstName: 'Ada',
+            lastName: 'Lovelace'
+        };
+        User.findOne.mockResolvedValue(foundUser);
+
+        await expect(
+            user.findUserWithIdentityProvider('google', 'subject-1')
+        ).resolves.toEqual(foundUser);
+        expect(User.findOne).toHaveBeenCalledWith({
+            attributes: ['id', 'email', 'firstName', 'lastName'],
+            include: [
+                {
+                    model: IdentityProvider,
+                    as: 'identityProviders',
+                    where: {
+                        provider: 'google',
+                        providerUserId: 'subject-1'
+                    },
+                    required: true
+                }
+            ],
+            benchmark: true,
+            logging: expect.any(Function)
         });
     });
 

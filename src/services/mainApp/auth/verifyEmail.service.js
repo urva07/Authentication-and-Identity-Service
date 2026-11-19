@@ -5,7 +5,15 @@ const {
     mysql: { 
         getUserRepository, 
         getUserPasswordRepository 
-    } 
+    },
+    redis: {
+        userCacheInstance: {
+            getUserExistenceRepository
+        },
+        sessionInstance: {
+            getUserLockRepository
+        }
+    }
 } = require('#src/repositories/index.js');
 const { verifyAes256GcmTokenWithExpiry } = require('#src/utils/aes256GcmToken.js');
 const { createSigninTokenKey } = require('#src/utils/signinTokenKey.js');
@@ -19,6 +27,7 @@ const {
 const defaultLogger = require('#src/utils/logger.js');
 const requestCoalescer = require('#src/lib/requestCoalescer.js')
 const { createCoalescingKey } = require('#src/lib/index.js');
+const { cacheAuthenticatedUser } = require('#src/lib/index.js');
 
 
 const INVALID_LINK_MESSAGE = 'Invalid or expired verification link';
@@ -27,6 +36,8 @@ const NAME_MAX_LENGTH = 100;
 const createVerifyEmailService = ({
     userRepository,
     userPasswordRepository,
+    userExistenceRepository,
+    userLockRepository,
     mysqlSequelizeClient = sequelize
 } = {}) => {
     if (
@@ -79,7 +90,8 @@ const createVerifyEmailService = ({
 
         userRepository = userRepository || getUserRepository();
         userPasswordRepository = userPasswordRepository || getUserPasswordRepository();
-         const existingUser = await requestCoalescer(
+
+        const existingUser = await requestCoalescer(
             coalescingKey([sub]),
             () => userRepository.findById(sub),
             logger
@@ -105,7 +117,7 @@ const createVerifyEmailService = ({
         const { firstName, lastName } = splitName(name);
 
         try {
-            await mysqlSequelizeClient.transaction(async (transaction) => {
+            const createdUser = await mysqlSequelizeClient.transaction(async (transaction) => {
                 const createdUser = await userRepository.create(
                     { 
                         id: sub, 
@@ -131,11 +143,22 @@ const createVerifyEmailService = ({
                 return createdUser;
             });
 
-            const accessToken = generateAccessToken(sub);
+            const accessToken = generateAccessToken(createdUser.id);
+            const refreshToken = generateRefreshToken(createdUser.id);
 
-            const refreshToken = generateRefreshToken(sub);
+            userExistenceRepository = userExistenceRepository || getUserExistenceRepository();
+            userLockRepository = userLockRepository || getUserLockRepository();
 
-            logger.debug('Email verification completed', { userId: sub });
+            await cacheAuthenticatedUser(
+                {
+                    userExistenceRepository,
+                    userLockRepository
+                },
+                createdUser.id,
+                logger
+            )
+
+            logger.debug('Email verification completed', { userId: createdUser.id });
 
             return {
                 conflict: false,
@@ -148,7 +171,7 @@ const createVerifyEmailService = ({
             };
         } catch (error) {
             if (error?.name === 'SequelizeUniqueConstraintError') {
-                logger.debug('A conflict of user has been encountered after verifying the user doesnot exist while creating it during database transaction.')
+                logger.debug('A conflict of user has been encountered while creating it after verifying that it doesnot exist.')
 
                 return {
                     conflict: true,

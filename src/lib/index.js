@@ -3,4 +3,5 @@ module.exports = {
     openSockets: require('./openSockets.js'),
     createCoalescingKey: require('./createCoalescingKey.js'),
     retryWithExponentialBackoff: require('./retryWithExponentialBackoff.js'),
+    cacheAuthenticatedUser: require('./cacheAuthenticatedUser.js')
 };

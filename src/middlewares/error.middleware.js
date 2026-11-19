@@ -3,7 +3,10 @@ const { AppError, PayloadTooLargeError } = require('../errors');
 
 const INTERNAL_SERVER_ERROR_MESSAGE = 'Internal Server Error';
 
+
 module.exports = (err, req, res, next) => {
+    if (res.headersSent) return next(err);
+
     if (err.type === 'entity.too.large') {
         err = new PayloadTooLargeError();
     }

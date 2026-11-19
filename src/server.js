@@ -13,9 +13,7 @@ const {
         configureRepositories: configureMysqlRepositories 
     },
     redis: {
-        userCache: {
-            configureRepositories: configureUserCacheRedisRepositories
-        }
+        configureAllInstanceRepositories: configureRedisInstancesRepositories
     }
 } = require('./repositories');
 const logger = require('./utils/logger');
@@ -59,7 +57,10 @@ const startServer = async () => {
 
     connections = await initializeConnections();
     configureMysqlRepositories(mysql.models);
-    configureUserCacheRedisRepositories(redis.redisCacheClient);
+    configureRedisInstancesRepositories({
+        userCacheInstanceClient: redis.redisCacheClient,
+        sessionInstanceClient: redis.redisSessionClient
+    });
 
     
     server = await new Promise((resolve, reject) => {

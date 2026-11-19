@@ -1,6 +1,7 @@
 const createUserRepository = ({
     User, 
     UserPassword, 
+    IdentityProvider,
     createQueryLogger 
 }) => ({
     create: (
@@ -92,7 +93,27 @@ const createUserRepository = ({
         logging: createQueryLogger('deleteById', 'User'),
         where: { id },
         ...options
-    })
+    }),
+    findUserWithIdentityProvider: (
+        provider,
+        providerUserId,
+        userAttributes = ['id', 'email', 'firstName', 'lastName']
+    ) => User.findOne({
+        attributes: userAttributes,
+        include: [
+            {
+                model: IdentityProvider,
+                as: 'identityProviders',
+                where: {
+                    provider,
+                    providerUserId
+                },
+                required: true
+            }
+        ],
+        benchmark: true,
+        logging: createQueryLogger('findUserWithIdentityProvider', 'User')
+    }),
 });
 
 

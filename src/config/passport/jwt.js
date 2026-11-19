@@ -1,14 +1,29 @@
 const {Strategy: JwtStrategy, ExtractJwt} = require('passport-jwt');
 const config = require('../config');
-const { mysql: { getUserRepository } } = require('#src/repositories/index.js');
+const {
+    mysql: {
+        getUserRepository
+    },
+    redis: {
+        userCacheInstance: {
+            getUserExistenceRepository
+        },
+        sessionInstance: {
+            getUserLockRepository
+        }
+    }
+} = require('#src/repositories/index.js');
 const logger = require('#src/utils/logger.js');
 const { AuthenticationError } = require('#src/errors/index.js');
 const requestCoalescer = require('#src/lib/requestCoalescer.js')
 const { createCoalescingKey } = require('#src/lib/index.js');
+const { cacheAuthenticatedUser } = require('#src/lib/index.js');
 
 
 const createJwtAuthenticationCallback = ({
-    userRepository
+    userRepository,
+    userExistenceRepository,
+    userLockRepository
 } = {}) => {
     const coalescingKey = createCoalescingKey({
         db: "mysql",
@@ -19,12 +34,56 @@ const createJwtAuthenticationCallback = ({
     return async (payload, done) => {
         try {
             logger.debug('[passport-jwt] Looking up user for JWT authentication');
-            userRepository = userRepository || getUserRepository();
+
+            if (!payload.sub) {
+                return done(new AuthenticationError("No sub received on payload"));
+            }
+            const userId = payload.sub
+
+            const fetchUser = async () => {
+                userRepository = userRepository || getUserRepository();
+                userExistenceRepository = userExistenceRepository || getUserExistenceRepository();
+                userLockRepository = userLockRepository || getUserLockRepository();
+
+                logger.debug({ userId }, '[passport-jwt] Checking user existence from cache');
+
+                let cachedUserExist;
+                try {
+                    cachedUserExist = await userExistenceRepository.getById(userId);
+                } catch (error) {
+                    logger.error({ userId, err: error }, '[passport-jwt] Failed to fetch user from cache');
+                }
+
+                if (cachedUserExist) {
+                    logger.debug({ userId }, '[passport-jwt] Cache hit for user');
+                    return { id: userId }
+                }
+                logger.debug({ userId }, '[passport-jwt] Cache miss for user');
+
+                logger.debug({ userId }, '[passport-jwt] Fetching user from database');
+                const user = await userRepository.findById(userId);
+
+                if (user) {
+                    logger.debug({ userId }, '[passport-jwt] User fetched from database');
+                    await cacheAuthenticatedUser(
+                        {
+                            userExistenceRepository,
+                            userLockRepository
+                        },
+                        user.id,
+                        logger
+                    )
+
+                    return { id: userId };
+                }
+
+                logger.debug({ userId }, '[passport-jwt] User not found from database');
+                return null;
+            }
             
-            const args = [payload.sub]
             const user = await requestCoalescer(
-                coalescingKey(args),
-                () => userRepository.findById(...args),
+                coalescingKey([userId]),
+                fetchUser,
                 logger
             );
 
@@ -36,7 +95,7 @@ const createJwtAuthenticationCallback = ({
             logger.debug('[passport-jwt] JWT authentication user lookup succeeded');
             return done(null, user);
         } catch (error) {
-            logger.debug('[passport-jwt] JWT authentication user lookup failed');
+            logger.debug('[passport-jwt] JWT authentication user lookup failed due to unknown error');
             return done(error);
         }
     }

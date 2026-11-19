@@ -1,6 +1,17 @@
 const { describe, beforeEach, jest: jestApi, afterAll, test, expect } = require('@jest/globals');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+
+const mockCacheAuthenticatedUser = jestApi.fn().mockResolvedValue(undefined);
+
+jestApi.mock('#src/lib/index.js', () => {
+    const actual = jestApi.requireActual('#src/lib/index.js');
+    return {
+        ...actual,
+        cacheAuthenticatedUser: (...args) => mockCacheAuthenticatedUser(...args)
+    };
+});
+
 const createLoginService = require('../../../src/services/mainApp/auth/login.service');
 const config = require('../../../src/config/config');
 const { AuthenticationError } = require('../../../src/errors');
@@ -14,10 +25,13 @@ describe('login service', () => {
     };
     let userRepository;
     let userPasswordRepository;
+    let userExistenceRepository;
+    let userLockRepository;
     let passwordHash;
     let loginService;
 
     beforeEach(async () => {
+        jestApi.clearAllMocks();
         config.auth.jwt.jwtAccessTokenSecret = jwtSecret;
         config.auth.jwt.jwtRefreshTokenSecret = jwtSecret;
         passwordHash = await bcrypt.hash('correct password', 4);
@@ -27,9 +41,18 @@ describe('login service', () => {
         userPasswordRepository = {
             findByUserId: jestApi.fn().mockResolvedValue({ passwordHash })
         };
+        userExistenceRepository = {
+            setById: jestApi.fn().mockResolvedValue(undefined)
+        };
+        userLockRepository = {
+            acquire: jestApi.fn().mockResolvedValue(true),
+            release: jestApi.fn().mockResolvedValue(1)
+        };
         loginService = createLoginService({
             userRepository,
             userPasswordRepository,
+            userExistenceRepository,
+            userLockRepository,
             jwtSecret
         });
     });
@@ -64,6 +87,11 @@ describe('login service', () => {
         expect(userPasswordRepository.findByUserId).toHaveBeenCalledWith(userId);
         expect(jwt.verify(result.accessToken, jwtSecret)).toMatchObject({ sub: userId });
         expect(jwt.verify(result.refreshToken, jwtSecret)).toMatchObject({ sub: userId });
+        expect(mockCacheAuthenticatedUser).toHaveBeenCalledWith(
+            { userExistenceRepository, userLockRepository },
+            userId,
+            expect.anything()
+        );
         expect(result.user).toEqual({
             id: userId,
             email: 'ada@example.com',

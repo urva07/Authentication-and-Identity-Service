@@ -8,6 +8,28 @@ describe('error middleware', () => {
         jestApi.restoreAllMocks();
     });
 
+    test('delegates to the next error handler after headers are sent', () => {
+        const error = new Error('response already started');
+        const next = jestApi.fn();
+        const res = {
+            headersSent: true,
+            status: jestApi.fn().mockReturnThis(),
+            json: jestApi.fn()
+        };
+
+        errorMiddleware(
+            error,
+            { method: 'GET', originalUrl: '/api/users' },
+            res,
+            next
+        );
+
+        expect(next).toHaveBeenCalledWith(error);
+        expect(res.status).not.toHaveBeenCalled();
+        expect(res.json).not.toHaveBeenCalled();
+        expect(res.err).toBeUndefined();
+    });
+
     test('does not log raw validation input or its cause', () => {
         const secretPassword = 'user-entered-password';
         const parsed = z

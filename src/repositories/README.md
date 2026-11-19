@@ -6,7 +6,7 @@ out of controllers and services. Import everything through the index:
 ```js
 const {
     mysql: { getUserRepository, getActiveTokenRepository },
-    redis: { userCache: { getUserCacheRepository } }
+    redis: { userCacheInstance: { getprofileCacheRepository } }
 } = require('#src/repositories/index.js');
 ```
 
@@ -15,7 +15,7 @@ const {
 | Folder | Store | Contents |
 | --- | --- | --- |
 | `mysql/` | MySQL (Sequelize) | `user`, `userPassword`, `identityProvider` and `activeToken` repositories. See [mysql/README.md](./mysql/README.md). |
-| `redis/userCache/` | Redis (user cache client) | `userCache` and `userLock` repositories. |
+| `redis/userCacheInstance/` | Redis (user cache client) | `userCacheInstance` and `userLock` repositories. |
 
 ## Factories, configuration and getters
 
@@ -25,7 +25,7 @@ const {
   a stub.
 - `configureRepositories(...)` builds the shared instances. `server.js` calls
   `mysql.configureRepositories(mysql.models)` and
-  `redis.userCache.configureRepositories(redis.redisCacheClient)` after the
+  `redis.userCacheInstance.configureRepositories(redis.redisCacheClient)` after the
   database connections are initialized.
 - The `get<Name>Repository()` getters return those shared instances. They throw
   (`Repositories have not been configured`) if called before
@@ -60,7 +60,7 @@ the same transaction as the change it authorizes.
 
 Both take the Redis client created for the user cache.
 
-- `userCacheRepository`: `getById(userId)` returns the parsed cached user or
+- `profileCacheRepository`: `getById(userId)` returns the parsed cached user or
   `null`; `setById(userId, user, ttl = 300)` stores it as JSON under
   `user:<id>` with an expiry in seconds; `invalidateById(userId)` removes it.
 - `userLockRepository`: `acquire(userId, token, ttl = 3600)` sets

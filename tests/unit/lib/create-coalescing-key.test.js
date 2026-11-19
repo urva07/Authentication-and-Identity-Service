@@ -19,11 +19,22 @@ describe('createCoalescingKey', () => {
 
     test('distinguishes Redis instances from other databases', () => {
         const redisKey = createCoalescingKey({
-            db: 'redis', redisInstance: 'userCache', repository: 'userRepository', method: 'findById'
+            db: 'redis', redisInstance: 'userCacheInstance', repository: 'userRepository', method: 'findById'
         });
         const mysqlKey = createCoalescingKey({ db: 'mysql', repository: 'userRepository', method: 'findById' });
 
         expect(redisKey(['id'])).not.toBe(mysqlKey(['id']));
+    });
+
+    test('supports the session Redis instance and distinguishes it from the user cache', () => {
+        const sessionKey = createCoalescingKey({
+            db: 'redis', redisInstance: 'sessionInstance', repository: 'userLockRepository', method: 'isLocked'
+        });
+        const userCacheKey = createCoalescingKey({
+            db: 'redis', redisInstance: 'userCacheInstance', repository: 'userLockRepository', method: 'isLocked'
+        });
+
+        expect(sessionKey(['user-id'])).not.toBe(userCacheKey(['user-id']));
     });
 
     test('rejects invalid configuration and arguments', () => {

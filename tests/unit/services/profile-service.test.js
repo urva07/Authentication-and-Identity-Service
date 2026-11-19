@@ -34,7 +34,7 @@ const createLock = (overrides = {}) => ({
     ...overrides
 });
 const createProfileService = (dependencies = {}) => createProfileServiceWithDependencies({
-    userCacheRepository: createCache(),
+    profileCacheRepository: createCache(),
     userLockRepository: createLock(),
     ...dependencies
 });
@@ -200,7 +200,7 @@ describe('profile service', () => {
     test('returns a cached profile without querying the database', async () => {
         const cache = createCache({ getById: jestApi.fn().mockResolvedValue(requester) });
         const repository = createRepository();
-        const service = createProfileService({ userRepository: repository, userCacheRepository: cache });
+        const service = createProfileService({ userRepository: repository, profileCacheRepository: cache });
 
         await expect(service.getMyProfile(requester, logger))
             .resolves.toMatchObject({ id: requester.id, email: requester.email });
@@ -214,24 +214,28 @@ describe('profile service', () => {
         const lock = createLock();
         const repository = createRepository({ findById: jestApi.fn().mockResolvedValue(requester) });
         const service = createProfileService({
-            userRepository: repository, userCacheRepository: cache, userLockRepository: lock
+            userRepository: repository, profileCacheRepository: cache, userLockRepository: lock
         });
 
         await expect(service.getMyProfile(requester, logger)).resolves.toMatchObject({ id: requester.id });
-        expect(logger.error).toHaveBeenCalledWith({ profileId: requester.id, error }, expect.any(String));
-        expect(lock.isLocked).toHaveBeenCalledWith(requester.id);
+        expect(logger.error).toHaveBeenCalledWith({ profileId: requester.id, err: error }, expect.any(String));
+        expect(lock.acquire).toHaveBeenCalledWith(requester.id, expect.any(String));
         expect(cache.setById).toHaveBeenCalledWith(requester.id, requester);
+        expect(lock.release).toHaveBeenCalledWith(
+            requester.id,
+            lock.acquire.mock.calls[0][1]
+        );
     });
 
     test.each([
-        ['locked', () => Promise.resolve(true)],
+        ['locked', () => Promise.resolve(false)],
         ['lock check fails', () => Promise.reject(new Error('lock unavailable'))]
     ])('does not cache a database result when %s', async (_label, checkLock) => {
         const cache = createCache();
-        const lock = createLock({ isLocked: jestApi.fn(checkLock) });
+        const lock = createLock({ acquire: jestApi.fn(checkLock) });
         const service = createProfileService({
             userRepository: createRepository({ findById: jestApi.fn().mockResolvedValue(requester) }),
-            userCacheRepository: cache,
+            profileCacheRepository: cache,
             userLockRepository: lock
         });
 
@@ -242,13 +246,19 @@ describe('profile service', () => {
     test('continues returning a database profile if caching it fails', async () => {
         const error = new Error('cache write failed');
         const cache = createCache({ setById: jestApi.fn().mockRejectedValue(error) });
+        const lock = createLock();
         const service = createProfileService({
             userRepository: createRepository({ findById: jestApi.fn().mockResolvedValue(requester) }),
-            userCacheRepository: cache
+            profileCacheRepository: cache,
+            userLockRepository: lock
         });
 
         await expect(service.getMyProfile(requester, logger)).resolves.toMatchObject({ id: requester.id });
-        expect(logger.error).toHaveBeenCalledWith({ profileId: requester.id, error }, expect.any(String));
+        expect(logger.error).toHaveBeenCalledWith({ profileId: requester.id, err: error }, expect.any(String));
+        expect(lock.release).toHaveBeenCalledWith(
+            requester.id,
+            lock.acquire.mock.calls[0][1]
+        );
     });
 
     test('updates under a lock, invalidating the cache before writing and releasing with the same token', async () => {
@@ -256,7 +266,7 @@ describe('profile service', () => {
         const cache = createCache();
         const lock = createLock();
         const service = createProfileService({
-            userRepository: repository, userCacheRepository: cache, userLockRepository: lock
+            userRepository: repository, profileCacheRepository: cache, userLockRepository: lock
         });
 
         await service.updateMyProfile(requester, { firstName: 'Ada' }, logger);
@@ -302,8 +312,22 @@ describe('profile service', () => {
 
         await jestApi.runAllTimersAsync();
         await expect(result).resolves.toMatchObject({ id: requester.id });
-        expect(lock.release).toHaveBeenCalledTimes(2);
-        expect(lock.release).toHaveBeenNthCalledWith(2, requester.id, lock.acquire.mock.calls[0][1]);
+        expect(lock.release).toHaveBeenCalledTimes(3);
+        expect(lock.release).toHaveBeenNthCalledWith(
+            1,
+            requester.id,
+            lock.acquire.mock.calls[1][1]
+        );
+        expect(lock.release).toHaveBeenNthCalledWith(
+            2,
+            requester.id,
+            lock.acquire.mock.calls[1][1]
+        );
+        expect(lock.release).toHaveBeenNthCalledWith(
+            3,
+            requester.id,
+            lock.acquire.mock.calls[0][1]
+        );
     });
 
     test('deletes under a lock and invalidates the cache before and after the database write', async () => {
@@ -311,7 +335,7 @@ describe('profile service', () => {
         const cache = createCache();
         const lock = createLock();
         const service = createProfileService({
-            userRepository: repository, userCacheRepository: cache, userLockRepository: lock
+            userRepository: repository, profileCacheRepository: cache, userLockRepository: lock
         });
 
         await service.deleteMyProfile(requester, logger);
@@ -331,11 +355,11 @@ describe('profile service', () => {
         });
         const lock = createLock();
         const service = createProfileService({
-            userRepository: createRepository(), userCacheRepository: cache, userLockRepository: lock
+            userRepository: createRepository(), profileCacheRepository: cache, userLockRepository: lock
         });
 
         await expect(service.deleteMyProfile(requester, logger)).resolves.toEqual({ success: true });
-        expect(logger.error).toHaveBeenCalledWith({ userId: requester.id, error }, expect.any(String));
+        expect(logger.error).toHaveBeenCalledWith({ userId: requester.id, err: error }, expect.any(String));
         expect(lock.release).toHaveBeenCalledWith(requester.id, lock.acquire.mock.calls[0][1]);
     });
 
@@ -345,7 +369,7 @@ describe('profile service', () => {
         const cache = createCache();
         const lock = createLock();
         const service = createProfileService({
-            userRepository: repository, userCacheRepository: cache, userLockRepository: lock
+            userRepository: repository, profileCacheRepository: cache, userLockRepository: lock
         });
 
         await expect(service.deleteMyProfile(requester, logger)).rejects.toBe(error);

@@ -12,6 +12,7 @@ const configureRepositories = (models) => {
         userRepository: createUserRepository({
             User: models.User,
             UserPassword: models.UserPassword,
+            IdentityProvider: models.IdentityProvider,
             createQueryLogger
         }),
         userPasswordRepository: createUserPasswordRepository({
@@ -20,6 +21,7 @@ const configureRepositories = (models) => {
         }),
         identityProviderRepository: createIdentityProviderRepository({
             IdentityProvider: models.IdentityProvider,
+            User: models.User,
             createQueryLogger
         }),
         activeTokenRepository: createActiveTokenRepository({

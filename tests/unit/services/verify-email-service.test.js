@@ -2,6 +2,17 @@ const { describe, beforeEach, jest: jestApi, afterAll, test, expect } = require(
 const config = require('../../../src/config/config');
 const { generateAes256GcmToken } = require('../../../src/utils/aes256GcmToken');
 const { createSigninTokenKey } = require('../../../src/utils/signinTokenKey');
+
+const mockCacheAuthenticatedUser = jestApi.fn().mockResolvedValue(undefined);
+
+jestApi.mock('#src/lib/index.js', () => {
+    const actual = jestApi.requireActual('#src/lib/index.js');
+    return {
+        ...actual,
+        cacheAuthenticatedUser: (...args) => mockCacheAuthenticatedUser(...args)
+    };
+});
+
 const createVerifyEmailService = require('../../../src/services/mainApp/auth/verifyEmail.service');
 
 describe('verify email service', () => {
@@ -11,6 +22,8 @@ describe('verify email service', () => {
     const transaction = { id: 'transaction' };
     let userRepository;
     let userPasswordRepository;
+    let userExistenceRepository;
+    let userLockRepository;
     let sequelize;
     let service;
 
@@ -33,6 +46,7 @@ describe('verify email service', () => {
     };
 
     beforeEach(() => {
+        jestApi.clearAllMocks();
         config.auth.basic.signinAes256GcmTokenSecret = tokenSecret;
         userRepository = {
             findById: jestApi.fn().mockResolvedValue(null),
@@ -44,12 +58,21 @@ describe('verify email service', () => {
         userPasswordRepository = {
             create: jestApi.fn().mockResolvedValue({})
         };
+        userExistenceRepository = {
+            setById: jestApi.fn().mockResolvedValue(undefined)
+        };
+        userLockRepository = {
+            acquire: jestApi.fn().mockResolvedValue(true),
+            release: jestApi.fn().mockResolvedValue(1)
+        };
         sequelize = {
             transaction: jestApi.fn((callback) => callback(transaction))
         };
         service = createVerifyEmailService({
             userRepository,
             userPasswordRepository,
+            userExistenceRepository,
+            userLockRepository,
             mysqlSequelizeClient: sequelize
         });
     });
@@ -79,6 +102,11 @@ describe('verify email service', () => {
                 passwordHash: 'hashed-password'
             }),
             { transaction }
+        );
+        expect(mockCacheAuthenticatedUser).toHaveBeenCalledWith(
+            { userExistenceRepository, userLockRepository },
+            userId,
+            expect.anything()
         );
         expect(result).toEqual({
             conflict: false,

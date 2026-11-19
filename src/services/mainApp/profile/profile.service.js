@@ -8,8 +8,10 @@ const {
         getUserRepository 
     },
     redis: {
-        userCache: {
-            getUserCacheRepository,
+        userCacheInstance: {
+            getprofileCacheRepository
+        },
+        sessionInstance: {
             getUserLockRepository
         }
     } 
@@ -53,7 +55,7 @@ const toPublicProfile = (user) => ({
 
 const createProfileService = ({ 
     userRepository,
-    userCacheRepository,
+    profileCacheRepository,
     userLockRepository
 } = {}) => {
     if (
@@ -74,7 +76,7 @@ const createProfileService = ({
 
     const findProfileById = (profileId, logger = defaultLogger) => {
         userRepository = userRepository || getUserRepository();
-        userCacheRepository = userCacheRepository || getUserCacheRepository();
+        profileCacheRepository = profileCacheRepository || getprofileCacheRepository();
         userLockRepository = userLockRepository || getUserLockRepository();
 
         const fetchProfile = async () => {
@@ -82,9 +84,9 @@ const createProfileService = ({
 
             let cachedProfile;
             try {
-                cachedProfile = await userCacheRepository.getById(profileId);
+                cachedProfile = await profileCacheRepository.getById(profileId);
             } catch (error) {
-                logger.error({ profileId, error }, 'Failed to fetch profile from cache');
+                logger.error({ profileId, err: error }, 'Failed to fetch profile from cache');
             }
 
             if (cachedProfile) {
@@ -100,22 +102,35 @@ const createProfileService = ({
                 logger.debug({ profileId, profile }, 'Profile fetched from database');
                 
                 const cacheProfile = async () => {
+                    const token = generateUUID();
+
                     try {
-                        if (await userLockRepository.isLocked(profileId)) {
+                        if (!await userLockRepository.acquire(profileId, token)) {
                             logger.debug({ profileId }, 'Skipping profile cache because profile is locked to cache');
                             return;
                         }
                     } catch (error) {
-                        logger.error({ profileId, error }, 'Failed to check profile lock; skipping cache');
+                        logger.error({ profileId, err: error }, 'Failed to check profile lock; skipping cache');
                         return;
                     }
 
                     logger.debug({ profileId }, 'Caching profile');
                     try {
-                        await userCacheRepository.setById(profileId, profile);
+                        await profileCacheRepository.setById(profileId, profile);
                         logger.debug({ profileId }, 'Profile cached');
                     } catch (error) {
-                        logger.error({ profileId, error }, 'Failed to cache profile');
+                        logger.error({ profileId, err: error }, 'Failed to cache profile');
+                    } finally {
+                        const releaseLock = async () => {
+                            await userLockRepository.release(profileId, token);
+                            logger.debug({ userId: profileId }, 'Lock released on user');
+                        };
+
+                        try {
+                            await retryWithExponentialBackoff(releaseLock, 5);
+                        } catch (error) {
+                            logger.error({ userId: profileId, err: error }, 'Failed to release user lock');
+                        }
                     }
                 };
                 await cacheProfile();
@@ -155,7 +170,7 @@ const createProfileService = ({
         }
 
         userRepository = userRepository || getUserRepository();
-        userCacheRepository = userCacheRepository || getUserCacheRepository();
+        profileCacheRepository = profileCacheRepository || getprofileCacheRepository();
         userLockRepository = userLockRepository || getUserLockRepository();
 
         const token = generateUUID();
@@ -169,7 +184,7 @@ const createProfileService = ({
             }
             logger.debug({ userId: user.id }, 'Profile update lock acquired');
                 
-            await userCacheRepository.invalidateById(user.id);
+            await profileCacheRepository.invalidateById(user.id);
             logger.debug({ userId: user.id }, 'Profile cache invalidated');
             
             await userRepository.updateById(user.id, attributes);
@@ -194,7 +209,7 @@ const createProfileService = ({
             try {
                 await retryWithExponentialBackoff(releaseLock, 5);
             } catch (error) {
-                logger.error({ userId: user.id, error }, 'Failed to release profile update lock');
+                logger.error({ userId: user.id, err: error }, 'Failed to release profile update lock');
             }
         }
     };
@@ -224,7 +239,7 @@ const createProfileService = ({
         }
 
         userRepository = userRepository || getUserRepository();
-        userCacheRepository = userCacheRepository || getUserCacheRepository();
+        profileCacheRepository = profileCacheRepository || getprofileCacheRepository();
         userLockRepository = userLockRepository || getUserLockRepository();
 
         const token = generateUUID();
@@ -238,16 +253,16 @@ const createProfileService = ({
             }
             logger.debug({ userId: user.id }, 'Profile delete lock acquired');
 
-            await userCacheRepository.invalidateById(user.id);
+            await profileCacheRepository.invalidateById(user.id);
             logger.debug({ userId: user.id }, 'Profile cache invalidated');
 
             await userRepository.deleteById(user.id);
             logger.debug({ userId: user.id }, 'Profile deleted from database');
 
             try {
-                await userCacheRepository.invalidateById(user.id);
+                await profileCacheRepository.invalidateById(user.id);
             } catch (error) {
-                logger.error({ userId: user.id, error }, 'Failed to invalidate profile cache after deletion');
+                logger.error({ userId: user.id, err: error }, 'Failed to invalidate profile cache after deletion');
             }
 
             logger.debug({ userId: user.id }, 'Profile delete operation completed');
@@ -264,7 +279,7 @@ const createProfileService = ({
             try {
                 await retryWithExponentialBackoff(releaseLock, 5);
             } catch (error) {
-                logger.error({ userId: user.id, error }, 'Failed to release profile delete lock');
+                logger.error({ userId: user.id, err: error }, 'Failed to release profile delete lock');
             }
         }
     };

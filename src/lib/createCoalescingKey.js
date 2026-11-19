@@ -1,7 +1,7 @@
 const stableStringify = require("fast-json-stable-stringify");
 
 
-const allowedRedisInstances = ['userCache'];
+const allowedRedisInstances = ['userCacheInstance', 'sessionInstance'];
 const allowedDbs = ['redis', 'mongodb', 'mysql'];
 
 function createCoalescingKey({db, redisInstance, repository, method}) {

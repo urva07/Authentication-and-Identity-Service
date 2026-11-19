@@ -167,4 +167,4 @@ on first use, or accept an `emailService` option.
 - A missing profile throws a `NotFoundError`; a missing authenticated user
   throws an `AuthenticationError`.
 
-Injectable: `userRepository`, `userCacheRepository`, `userLockRepository`.
+Injectable: `userRepository`, `profileCacheRepository`, `userLockRepository`.

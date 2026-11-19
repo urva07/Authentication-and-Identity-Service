@@ -1,19 +1,21 @@
-const createUserCacheRepository = (redis) => ({
+const getKey = (userId) => `profile:${userId}`;
+
+const createProfileCacheRepository = (redis) => ({
     getById: async (userId) => {
-        const data = await redis.get(`user:${userId}`);
+        const data = await redis.get(getKey(userId));
         return data ? JSON.parse(data) : null;
     },
     setById: async (userId, user, ttl = 300) => {
         await redis.set(
-            `user:${userId}`,
+            getKey(userId),
             JSON.stringify(user),
             { EX: ttl }
         );
     },
     invalidateById: async (userId) => {
-        await redis.del(`user:${userId}`);
+        await redis.del(getKey(userId));
     }
 });
 
 
-module.exports = createUserCacheRepository;
+module.exports = createProfileCacheRepository;

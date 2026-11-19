@@ -1,4 +1,3 @@
-const config = require('#src/config/config/index.js');
 const bcrypt = require('bcryptjs');
 const defaultLogger = require('#src/utils/logger.js');
 const { AuthenticationError } = require('#src/errors/index.js');
@@ -6,18 +5,28 @@ const {
     mysql: {
         getUserRepository,
         getUserPasswordRepository
+    },
+    redis: {
+        userCacheInstance: {
+            getUserExistenceRepository
+        },
+        sessionInstance: {
+            getUserLockRepository
+        }
     }
 } = require('#src/repositories/index.js');
 const { generateRefreshToken, generateAccessToken } = require('#src/utils/jwt.js');
 const requestCoalescer = require('#src/lib/requestCoalescer.js');
-const { createCoalescingKey } = require('#src/lib/index.js');
+const { createCoalescingKey, cacheAuthenticatedUser } = require('#src/lib/index.js');
 
 
 const INVALID_CREDENTIALS = 'Invalid login credentials';
 
 const createLoginService = ({
     userRepository,
-    userPasswordRepository
+    userPasswordRepository,
+    userExistenceRepository,
+    userLockRepository
 } = {}) => {
     if (
         userRepository !== undefined && 
@@ -98,6 +107,17 @@ const createLoginService = ({
         try {
             const accessToken = generateAccessToken(user.id);
             const refreshToken = generateRefreshToken(user.id);
+            userExistenceRepository = userExistenceRepository || getUserExistenceRepository();
+            userLockRepository = userLockRepository || getUserLockRepository();
+
+            await cacheAuthenticatedUser(
+                {
+                    userExistenceRepository,
+                    userLockRepository
+                },
+                user.id,
+                logger
+            )
 
             return {
                 accessToken,

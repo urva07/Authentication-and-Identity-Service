@@ -1,9 +1,11 @@
+const getKey = (userId) => `lock:user:${userId}`
+
 const createUserLockRepository = (redis) => ({
     acquire: async (userId, token, ttl = 60) => {
         // The token proves ownership: if this lock expires and another caller acquires 
         // it, the old caller cannot accidentally release the new caller's lock.
         return redis.set(
-            `lock:user:${userId}`,
+            getKey(userId),
             token,
             { NX: true, EX: ttl }
         );
@@ -16,13 +18,13 @@ const createUserLockRepository = (redis) => ({
             end
             return 0`,
             {
-                keys: [`lock:user:${userId}`],
+                keys: [getKey(userId)],
                 arguments: [token]
             }
         );
     },
     isLocked: async (userId) => {
-        const result = await redis.get(`lock:user:${userId}`);
+        const result = await redis.get(getKey(userId));
         return result !== null;
     }
 });
