@@ -15,6 +15,15 @@ jestApi.mock('../../src/services', () => ({
                     user: { id: '1', email: 'ada@example.com' }
                 })
             }),
+            'oidc.services': {
+                'google-callback.service': () => ({
+                    loginUser: jestApi.fn().mockResolvedValue({
+                        accessToken: 'test-access-token',
+                        refreshToken: 'test-refresh-token',
+                        user: { id: '1', email: 'ada@example.com' }
+                    })
+                })
+            },
             'verify.service': () => ({
                 verifyUser: jestApi.fn().mockResolvedValue({
                     id: '1',

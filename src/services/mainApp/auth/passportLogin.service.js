@@ -30,17 +30,24 @@ const createPassportLoginService = ({
         const refreshToken = generateRefreshToken(user.id);
         logger.debug('Login tokens generated', { userId: String(user.id) });
 
-        userExistenceRepository = userExistenceRepository || getUserExistenceRepository();
-        userLockRepository = userLockRepository || getUserLockRepository();
-        
-        await cacheAuthenticatedUser(
-            {
-                userExistenceRepository,
-                userLockRepository
-            },
-            user.id,
-            logger
-        )
+        try {
+            userExistenceRepository = userExistenceRepository || getUserExistenceRepository();
+            userLockRepository = userLockRepository || getUserLockRepository();
+
+            await cacheAuthenticatedUser(
+                {
+                    userExistenceRepository,
+                    userLockRepository
+                },
+                user.id,
+                logger
+            );
+        } catch (error) {
+            logger.error(
+                { userId: String(user.id), err: error },
+                'Failed to cache authenticated user'
+            );
+        }
 
         return {
             accessToken,

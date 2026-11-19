@@ -15,7 +15,7 @@ const {
     } 
 } = require('#src/repositories/index.js');
 const { generateUUID } = require('#src/utils/userIdGenerator.js');
-const logger = require('#src/utils/logger.js');
+const defaultLogger = require('#src/utils/logger.js');
 const { 
     dbs: { 
         mysql: { 
@@ -24,14 +24,12 @@ const {
     } 
 } = require('#src/infrastructure/database/index.js');
 const requestCoalescer = require('#src/lib/requestCoalescer.js')
-const { createCoalescingKey, cacheAuthenticatedUser } = require('#src/lib/index.js');
+const { createCoalescingKey } = require('#src/lib/index.js');
 
 
 const createGoogleOidcAuthenticationCallback = ({
     userRepository,
     identityProviderRepository,
-    userExistenceRepository,
-    userLockRepository,
     mysqlSequelizeClient = sequelize
 } = {}) => {
     
@@ -41,12 +39,11 @@ const createGoogleOidcAuthenticationCallback = ({
         method: "findByProviderIdentity"
     });
 
-    return async (issuer, profile, done) => {
+    return async (req, issuer, profile, done) => {
+        const logger = req.log || defaultLogger;
         try {
             userRepository = userRepository || getUserRepository();
             identityProviderRepository = identityProviderRepository || getIdentityProviderRepository();
-            userExistenceRepository = userExistenceRepository || getUserExistenceRepository();
-            userLockRepository = userLockRepository || getUserLockRepository();
 
             const args = ['google', profile.id];
             const existingUser = await requestCoalescer(
@@ -58,16 +55,6 @@ const createGoogleOidcAuthenticationCallback = ({
 
             if (existingUser) {
                 logger.debug('[Google OIDC] Reusing existing user.');
-
-                await cacheAuthenticatedUser(
-                    {
-                        userExistenceRepository,
-                        userLockRepository
-                    },
-                    existingUser.id,
-                    logger
-                );
-
                 return done(
                     null, 
                     { 
@@ -137,31 +124,11 @@ const createGoogleOidcAuthenticationCallback = ({
                 if (identityAlreadyExists) {
                     await t.rollback();
                     logger.debug('[Google OIDC] Identity already exists in the identityProviderRepository; reusing the existing user.');
-
-                    await cacheAuthenticatedUser(
-                        {
-                            userExistenceRepository,
-                            userLockRepository
-                        },
-                        user.id,
-                        logger
-                    );
-
                     return done(null, user);
                 }
 
                 await t.commit();
                 logger.debug({ userId: user.id }, '[Google OIDC] User and identity created; transaction committed.');
-
-                await cacheAuthenticatedUser(
-                    {
-                        userExistenceRepository,
-                        userLockRepository
-                    },
-                    user.id,
-                    logger
-                );
-
                 return done(null, user);
             } catch (error) {
                 await t.rollback();
@@ -180,6 +147,7 @@ const googleOidcStrategy = new GoogleStrategy(
         clientID: config.auth.oidc.google.clientId,
         clientSecret: config.auth.oidc.google.clientSecret,
         callbackURL: config.auth.oidc.google.callbackUrl,
+        passReqToCallback: true,
         scope: (config.auth.oidc.google.scope || "openid email profile").split(" "),
     }, 
     createGoogleOidcAuthenticationCallback()

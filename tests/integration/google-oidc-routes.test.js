@@ -39,7 +39,8 @@ describe('Google OIDC routes', () => {
         const response = await request(app).get('/v1/auth/oidc/google/callback');
 
         expect(passport.authenticate).toHaveBeenCalledWith('google', {
-            failureRedirect: 'http://localhost:3000/login'
+            failureRedirect: 'http://localhost:3000/login',
+            session: false
         });
         expect(response.statusCode).toBe(200);
         expect(response.body).toEqual({

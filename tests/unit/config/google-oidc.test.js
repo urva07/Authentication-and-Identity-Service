@@ -6,8 +6,6 @@ const {
     test
 } = require('@jest/globals');
 
-const mockCacheAuthenticatedUser = jestApi.fn().mockResolvedValue(undefined);
-
 jestApi.mock('#src/repositories/index.js', () => ({
     mysql: {
         getUserRepository: jestApi.fn(),
@@ -26,8 +24,7 @@ jestApi.mock('#src/repositories/index.js', () => ({
 jestApi.mock('#src/lib/index.js', () => ({
     createCoalescingKey: jestApi.fn(
         ({ db, repository, method }) => (args) => `${db}:${repository}:${method}:${JSON.stringify(args)}`
-    ),
-    cacheAuthenticatedUser: (...args) => mockCacheAuthenticatedUser(...args)
+    )
 }));
 
 jestApi.mock('#src/infrastructure/database/index.js', () => ({
@@ -63,16 +60,13 @@ const setup = ({
             ? jestApi.fn().mockRejectedValue(identityCreateError)
             : jestApi.fn().mockResolvedValue({})
     };
-    const userExistenceRepository = { setById: jestApi.fn() };
-    const userLockRepository = { acquire: jestApi.fn(), release: jestApi.fn() };
 
     const verify = createGoogleOidcAuthenticationCallback({
         userRepository,
         identityProviderRepository,
-        userExistenceRepository,
-        userLockRepository,
         mysqlSequelizeClient: { transaction: jestApi.fn().mockResolvedValue(transaction) }
     });
+    const logger = { debug: jestApi.fn() };
 
     const run = () => {
         let resolveResult;
@@ -81,15 +75,13 @@ const setup = ({
         });
         const done = jestApi.fn((error, user) => resolveResult({ error, user }));
 
-        verify('issuer', profile, done);
+        verify({ log: logger }, 'issuer', profile, done);
         return { done, result };
     };
 
     return {
         userRepository,
         identityProviderRepository,
-        userExistenceRepository,
-        userLockRepository,
         transaction,
         run
     };
@@ -107,13 +99,7 @@ describe('Google OIDC authentication callback', () => {
             firstName: 'Urva',
             lastName: 'Patel'
         };
-        const {
-            userRepository,
-            userExistenceRepository,
-            userLockRepository,
-            transaction,
-            run
-        } = setup({ existingUser });
+        const { userRepository, transaction, run } = setup({ existingUser });
         const { done, result } = run();
 
         const { error, user } = await result;
@@ -124,11 +110,6 @@ describe('Google OIDC authentication callback', () => {
             'google',
             'google-id'
         );
-        expect(mockCacheAuthenticatedUser).toHaveBeenCalledWith(
-            { userExistenceRepository, userLockRepository },
-            'linked-user-id',
-            expect.anything()
-        );
         expect(transaction.commit).not.toHaveBeenCalled();
         expect(done).toHaveBeenCalledWith(null, existingUser);
     });
@@ -137,8 +118,6 @@ describe('Google OIDC authentication callback', () => {
         const {
             userRepository,
             identityProviderRepository,
-            userExistenceRepository,
-            userLockRepository,
             transaction,
             run
         } = setup();
@@ -171,17 +150,9 @@ describe('Google OIDC authentication callback', () => {
             { transaction }
         );
         expect(transaction.commit).toHaveBeenCalledTimes(1);
-        expect(mockCacheAuthenticatedUser).toHaveBeenCalledWith(
-            { userExistenceRepository, userLockRepository },
-            'persisted-user-id',
-            expect.anything()
-        );
         expect(done).toHaveBeenCalledWith(null, expect.objectContaining({
             id: 'persisted-user-id'
         }));
-        expect(transaction.commit.mock.invocationCallOrder[0]).toBeLessThan(
-            mockCacheAuthenticatedUser.mock.invocationCallOrder.at(-1)
-        );
     });
 
     test('rolls back and reuses the user when the identity insert is a concurrent duplicate', async () => {
@@ -189,8 +160,6 @@ describe('Google OIDC authentication callback', () => {
         duplicateError.name = 'SequelizeUniqueConstraintError';
         const {
             identityProviderRepository,
-            userExistenceRepository,
-            userLockRepository,
             transaction,
             run
         } = setup({ identityCreateError: duplicateError });
@@ -203,11 +172,6 @@ describe('Google OIDC authentication callback', () => {
         expect(identityProviderRepository.create).toHaveBeenCalled();
         expect(transaction.rollback).toHaveBeenCalledTimes(1);
         expect(transaction.commit).not.toHaveBeenCalled();
-        expect(mockCacheAuthenticatedUser).toHaveBeenCalledWith(
-            { userExistenceRepository, userLockRepository },
-            'persisted-user-id',
-            expect.anything()
-        );
         expect(done).toHaveBeenCalledWith(null, expect.objectContaining({
             id: 'persisted-user-id'
         }));
@@ -227,7 +191,6 @@ describe('Google OIDC authentication callback', () => {
         expect(transaction.rollback).toHaveBeenCalledTimes(1);
         expect(transaction.commit).not.toHaveBeenCalled();
         expect(done).toHaveBeenCalledWith(error);
-        expect(mockCacheAuthenticatedUser).not.toHaveBeenCalled();
     });
 
     test('rolls back and passes unexpected identity creation errors', async () => {
@@ -241,6 +204,5 @@ describe('Google OIDC authentication callback', () => {
         expect(transaction.rollback).toHaveBeenCalledTimes(1);
         expect(transaction.commit).not.toHaveBeenCalled();
         expect(done).toHaveBeenCalledWith(identityError);
-        expect(mockCacheAuthenticatedUser).not.toHaveBeenCalled();
     });
 });
