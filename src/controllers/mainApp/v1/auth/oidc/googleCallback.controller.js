@@ -24,7 +24,7 @@ const createGoogleCallbackController = (googleCallbackService) => {
                     maxAge: config.auth.jwt.cookieOptions.refresh.maxAge,
                     path: config.auth.jwt.cookieOptions.refresh.path,
                 });
-
+                
                 res.cookie(config.auth.jwt.cookieOptions.access.name, accessToken, {
                     httpOnly: config.auth.jwt.cookieOptions.access.httpOnly,
                     secure: config.auth.jwt.cookieOptions.access.secure,
