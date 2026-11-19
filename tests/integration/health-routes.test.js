@@ -1,21 +1,88 @@
-const { describe, test, expect } = require('@jest/globals');
+const { beforeEach, describe, jest: jestApi, test, expect } = require('@jest/globals');
 const request = require('supertest');
 
 const app = require('../../src/healthApp');
+const { dbs: { mysql: { sequelize } } } = require('../../src/infrastructure/database');
 
 describe('Health probe routes', () => {
-    test.each(['/live', '/ready'])(
-        'GET %s is registered without probe logic',
-        async (path) => {
-            const response = await request(app).get(path);
+    beforeEach(() => {
+        app.locals.startupComplete = false;
+        app.locals.shuttingDown = false;
+        jestApi.restoreAllMocks();
+    });
 
-            expect(response.statusCode).toBe(501);
-            expect(response.body).toEqual({
-                success: false,
-                message: 'Not implemented'
-            });
-        }
-    );
+    test('GET /live returns 200 while the process is running', async () => {
+        const response = await request(app).get('/live');
+
+        expect(response.statusCode).toBe(200);
+        expect(response.body).toEqual({
+            success: true,
+            message: 'Liveness check passed'
+        });
+    });
+
+    test('GET /live returns 503 while shutting down', async () => {
+        app.locals.shuttingDown = true;
+
+        const response = await request(app).get('/live');
+
+        expect(response.statusCode).toBe(503);
+        expect(response.body).toEqual({
+            success: false,
+            message: 'Liveness check failed'
+        });
+    });
+
+    test('GET /ready returns 503 before startup completes', async () => {
+        const response = await request(app).get('/ready');
+
+        expect(response.statusCode).toBe(503);
+        expect(response.body).toEqual({
+            success: false,
+            message: 'Readiness check failed'
+        });
+    });
+
+    test('GET /ready returns 200 after startup completes', async () => {
+        app.locals.startupComplete = true;
+        jestApi.spyOn(sequelize, 'query').mockResolvedValue([[{ '1': 1 }]]);
+
+        const response = await request(app).get('/ready');
+
+        expect(response.statusCode).toBe(200);
+        expect(response.body).toEqual({
+            success: true,
+            message: 'Readiness check passed'
+        });
+    });
+
+    test('GET /ready returns 503 while shutting down', async () => {
+        app.locals.startupComplete = true;
+        app.locals.shuttingDown = true;
+
+        const response = await request(app).get('/ready');
+
+        expect(response.statusCode).toBe(503);
+        expect(response.body).toEqual({
+            success: false,
+            message: 'Readiness check failed'
+        });
+    });
+
+    test('GET /ready returns 503 when MySQL is unavailable', async () => {
+        app.locals.startupComplete = true;
+        jestApi.spyOn(sequelize, 'query').mockRejectedValue(
+            new Error('MySQL unavailable')
+        );
+
+        const response = await request(app).get('/ready');
+
+        expect(response.statusCode).toBe(503);
+        expect(response.body).toEqual({
+            success: false,
+            message: 'Readiness check failed'
+        });
+    });
 
     test('GET /metrics returns Prometheus process metrics', async () => {
         await request(app).get('/live');
@@ -31,13 +98,10 @@ describe('Health probe routes', () => {
         expect(response.text).toContain('# HELP http_request_duration_seconds');
         expect(response.text).toContain('# HELP http_failed_requests_total');
         expect(response.text).toMatch(
-            /http_requests_total\{method="GET",status_code="501",path="\/live"[^}]*\} [1-9]\d*/
+            /http_requests_total\{method="GET",status_code="200",path="\/live"[^}]*\} [1-9]\d*/
         );
         expect(response.text).toMatch(
-            /http_failed_requests_total\{method="GET",status_code="501",path="\/live"[^}]*\} [1-9]\d*/
-        );
-        expect(response.text).toMatch(
-            /http_request_duration_seconds_count\{method="GET",status_code="501",path="\/live"\} [1-9]\d*/
+            /http_request_duration_seconds_count\{method="GET",status_code="200",path="\/live"\} [1-9]\d*/
         );
     });
 });

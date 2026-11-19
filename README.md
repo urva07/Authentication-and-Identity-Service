@@ -199,7 +199,8 @@ A separate app listens on `HEALTH_APP_PORT` (default `3001`):
 | Path | Description |
 |------|-------------|
 | `GET /startup` | `200` once the service has started. |
-| `GET /live`, `GET /ready` | Registered; return `501` until the checks are implemented. |
+| `GET /live` | `200` while running; `503` during shutdown. |
+| `GET /ready` | `200` after startup completes and MySQL responds; `503` before startup, during shutdown, or when MySQL is unavailable. |
 | `GET /metrics` | Prometheus metrics (default Node.js metrics and HTTP request counters/durations). |
 
 The Compose Prometheus service uses the root [`prometheus.yml`](./prometheus.yml)

@@ -27,7 +27,7 @@ const {
 
 const PORT = config.apps.mainApp.port;
 
-let server;
+let mainServer;
 let healthServer;
 let connections;
 let shuttingDown = false;
@@ -63,7 +63,7 @@ const startServer = async () => {
     });
 
     
-    server = await new Promise((resolve, reject) => {
+    mainServer = await new Promise((resolve, reject) => {
         const listeningServer = app.listen(PORT, () => {
             logger.info(
                 {
@@ -71,7 +71,7 @@ const startServer = async () => {
                     port: PORT,
                     url: 'http://localhost:' + PORT
                 },
-                'Express server started'
+                'Express mainServer started'
             );
             resolve(listeningServer);
         });
@@ -79,13 +79,13 @@ const startServer = async () => {
         listeningServer.once('error', reject);
     });
 
-    server.setTimeout(config.apps.mainApp.connectionInactivityTimeoutMs);
-    server.keepAliveTimeout = config.apps.mainApp.connectionKeepAliveTimeoutMs;
-    server.headersTimeout = config.apps.mainApp.reqHeadersTimeoutMs;
-    server.requestTimeout = config.apps.mainApp.reqTimeoutMs;
-    server.maxConnections = config.apps.mainApp.maxConnections;
+    mainServer.setTimeout(config.apps.mainApp.connectionInactivityTimeoutMs);
+    mainServer.keepAliveTimeout = config.apps.mainApp.connectionKeepAliveTimeoutMs;
+    mainServer.headersTimeout = config.apps.mainApp.reqHeadersTimeoutMs;
+    mainServer.requestTimeout = config.apps.mainApp.reqTimeoutMs;
+    mainServer.maxConnections = config.apps.mainApp.maxConnections;
 
-    server.on('connection', (socket) => {
+    mainServer.on('connection', (socket) => {
         logger.info(
             'New connection from ' +
                 socket.remoteAddress +
@@ -106,7 +106,7 @@ const startServer = async () => {
         });
     });
 
-    server.on('request', (req, res) => {
+    mainServer.on('request', (req, res) => {
         const socket = req.socket;
         socket.inflightRequests += 1;
 
@@ -135,15 +135,15 @@ const shutdown = async (signal) => {
     const errors = [];
 
     const forceCloseTimer = setTimeout(() => {
-        server?.closeAllConnections();
+        mainServer?.closeAllConnections();
         healthServer?.closeAllConnections();
         logger.warn('Force-closing all remaining connections as the grace period has expired');
     }, config.shutdown.forceCloseTimeoutMs);
     forceCloseTimer.unref();
 
-    if (server) {
+    if (mainServer) {
         const serverClosed = new Promise((resolve) => {
-            server.close((error) => {
+            mainServer.close((error) => {
                 if (error) {
                     errors.push(error);
                     logger.error({ err: error }, 'Failed to close HTTP server for new connections');
@@ -155,12 +155,10 @@ const shutdown = async (signal) => {
 
         logger.info({ activeConnections: openSockets.size }, 'Initiating shutdown for this many active connections');
 
-        server.closeIdleConnections();
+        mainServer.closeIdleConnections();
         destroyIdleSockets();
 
         await serverClosed;
-
-        clearTimeout(forceCloseTimer);
     }
 
     if (healthServer) {
@@ -182,23 +180,16 @@ const shutdown = async (signal) => {
         });
     }
 
+    clearTimeout(forceCloseTimer);
+
     logger.info('Closed all active connections. You may further get logs from the asynchronous close event of the connections.');
 
     logger.info('Closing database connections');
 
     const closeConnections = [
-        () => { 
-            connections?.mongo?.close(); 
-            logger.info('Closed MongoDB connection'); 
-        },
-        () => { 
-            connections?.mysql?.close(); 
-            logger.info('Closed MySQL connection'); 
-        },
-        () => { 
-            connections?.redis?.quit(); 
-            logger.info('Closed Redis connection'); 
-        }
+        () => connections?.mongo?.close(),
+        () => connections?.mysql?.close(),
+        () => connections?.redis?.quit()
     ];
 
     const closeResults = await Promise.allSettled(
@@ -252,7 +243,7 @@ process.on('uncaughtException', (error) => {
 startServer().catch((error) => {
     logger.fatal({ err: error }, 'Failed to start server');
     process.exitCode = 1;
-    if (server || healthServer || connections) {
+    if (mainServer || healthServer || connections) {
         shutdown('startup failure').catch((shutdownError) => {
             logger.error({ err: shutdownError }, 'Shutdown failed');
             process.exitCode = 1;

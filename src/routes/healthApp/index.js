@@ -1,6 +1,17 @@
 const express = require('express');
 const metricsRegistry = require('#src/monitoring/prometheus.js');
-const { "notImplemented.middleware": notImplemented } = require('#src/middlewares/index.js');
+const { dbs: { mysql: { sequelize } } } = require('#src/infrastructure/database/index.js');
+const { 
+    "healthApp.versions": { 
+        v1: { 
+            "metrics.controller": createMetricsController,
+            "probes.controller": {
+                createLivenessController,
+                createReadinessController
+            }
+        } 
+    } 
+} = require('#src/controllers/index.js');
 
 
 const router = express.Router();
@@ -12,21 +23,19 @@ router.get('/startup', (req, res) => {
     });
 });
 
-router.get('/live', notImplemented);
+router.get(
+    '/live',
+    createLivenessController().getLiveness
+);
 
-router.get('/ready', notImplemented);
+router.get(
+    '/ready',
+    createReadinessController(sequelize).getReadiness
+);
 
-router.get('/metrics', async (req, res, next) => {
-    try {
-        const metrics = await metricsRegistry.metrics();
-        res.set('Content-Type', metricsRegistry.contentType);
-        return res.status(200).send(metrics);
-    } catch (error) {
-        return next(error);
-    }
-});
+router.get('/metrics', createMetricsController(metricsRegistry).getMetrics);
 
-router.use((req, res, next) => {
+router.use((req, res) => {
     res.status(404).json({
         success: false,
         message: 'Endpoint not found'

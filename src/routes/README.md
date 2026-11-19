@@ -91,7 +91,7 @@ Served on its own port, separate from the main API.
 | Method and path | Behavior |
 | --- | --- |
 | `GET /startup` | `200` once the process is up. |
-| `GET /live` | `501 Not Implemented`. |
-| `GET /ready` | `501 Not Implemented`. |
+| `GET /live` | `200` while running; `503` during shutdown. |
+| `GET /ready` | `200` after startup completes and MySQL responds; `503` before startup, during shutdown, or when MySQL is unavailable. |
 | `GET /metrics` | Prometheus metrics (see [monitoring](../monitoring/README.md)). |
 | any other path | `404 { success: false, message: 'Endpoint not found' }` |

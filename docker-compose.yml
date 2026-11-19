@@ -1,6 +1,7 @@
 services:
   app:
     build: .
+    container_name: auth_service_server
     init: true
     stop_grace_period: 40s
     env_file:
@@ -53,6 +54,7 @@ services:
 
   mysql:
     image: mysql:8.4
+    container_name: auth_service_db_mysql
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_PASSWORD:?Set MYSQL_PASSWORD in .env}
       MYSQL_DATABASE: ${MYSQL_DATABASE:?Set MYSQL_DATABASE in .env}
@@ -72,6 +74,7 @@ services:
 
   redis_session:
     image: redis:7-alpine
+    container_name: auth_service_db_redis_session
     environment:
       REDIS_USERNAME: app
       REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}
@@ -101,6 +104,7 @@ services:
 
   redis_user_cache:
     image: redis:7-alpine
+    container_name: auth_service_db_redis_user_cache
     environment:
       REDIS_USERNAME: app
       REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}
@@ -130,6 +134,7 @@ services:
 
   redis_rate_limit:
     image: redis:7-alpine
+    container_name: auth_service_db_redis_rate_limit
     environment:
       REDIS_USERNAME: app
       REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}

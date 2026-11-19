@@ -3,7 +3,14 @@ const { generateUUID } = require('#src/utils/userIdGenerator.js');
 const retryWithExponentialBackoff = require('./retryWithExponentialBackoff');
 
 
-const cacheAuthenticatedUser = async ({ userExistenceRepository, userLockRepository }, userId, logger=defaultLogger) => {
+const cacheAuthenticatedUser = async (
+    { 
+        userExistenceRepository, 
+        userLockRepository 
+    }, 
+    userId, 
+    logger=defaultLogger
+) => {
     const token = generateUUID();
 
     try {
