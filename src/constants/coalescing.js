@@ -84,6 +84,7 @@ const COALESCING = Object.freeze({
     })
 });
 
+
 module.exports = {
     COALESCING
 };

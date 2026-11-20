@@ -8,6 +8,7 @@ const AUTH_MESSAGES = Object.freeze({
     PASSWORD_RESET_REQUEST_SENT: 'If an account exists for this email, a password reset link has been sent.'
 });
 
+
 module.exports = {
     EMAIL_SUBJECTS,
     AUTH_MESSAGES

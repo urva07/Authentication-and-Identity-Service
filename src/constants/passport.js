@@ -5,6 +5,7 @@ const PASSPORT_STRATEGIES = Object.freeze({
     JWT_REFRESH_COOKIE: 'jwtRefreshFromCookie'
 });
 
+
 module.exports = {
     PASSPORT_STRATEGIES
 };

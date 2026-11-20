@@ -11,6 +11,7 @@ const VALIDATION_LIMITS = Object.freeze({
     TOKEN_MAX_LENGTH: 4096
 });
 
+
 module.exports = {
     VALIDATION_LIMITS,
     PHONE_PATTERN: /^\+?[0-9]{6,29}$/

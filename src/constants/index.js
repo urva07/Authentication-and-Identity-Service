@@ -7,6 +7,7 @@ const passport = require('./passport');
 const coalescing = require('./coalescing');
 const validation = require('./validation');
 
+
 module.exports = {
     ...auth,
     ...identityProviders,

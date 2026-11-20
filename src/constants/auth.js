@@ -17,6 +17,7 @@ const JWT_CLAIMS = Object.freeze({
     PURPOSE: 'purpose'
 });
 
+
 module.exports = {
     AUTH_COOKIE_NAME: 'auth_token',
     REFRESH_TOKEN_COOKIE_NAME: AUTH_COOKIE_NAMES.REFRESH,
