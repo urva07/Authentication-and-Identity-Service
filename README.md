@@ -271,6 +271,11 @@ start the service in an isolated, non-production environment. Use the single
 - `K6_VUS` and `K6_DURATION` (optional): load settings; default to one virtual
   user for `60s`. For safety, `K6_VUS` is limited to 20 and `K6_DURATION` to
   10 minutes (specified in seconds or minutes).
+- `K6_HEADERS` and `K6_COOKIES` (optional): global JSON objects containing
+  request headers or cookies.
+- Route-specific `K6_METHOD_<METHOD>_PATH_<PATH>_HEADERS` and
+  `K6_METHOD_<METHOD>_PATH_<PATH>_COOKIES` variables use the same path
+  normalization as payload variables and override matching global keys.
 
 Sample payloads for all registered routes are in `tests/load/.env.example`.
 Copy the assignments to `tests/load/.env` and replace placeholder credentials,
@@ -298,8 +303,14 @@ For example, after configuring the login payload, run from the repository root:
 
 For another route, set `K6_METHOD` and `K6_PATH` to select its payload. The
 script checks the response status and enforces check-rate and p95 response-time
-thresholds. It does not configure authentication headers or cookies; routes
-requiring credentials beyond the body need additional request configuration.
+thresholds. Routes requiring credentials can use JSON header or cookie
+configuration. For example:
+
+```sh
+K6_HEADERS='{"Authorization":"Bearer replace-with-test-access-token"}'
+K6_COOKIES='{"accessToken":"replace-with-test-access-token"}'
+K6_METHOD_POST_PATH__v1_auth_refresh_COOKIES='{"refreshToken":"replace-with-test-refresh-token"}'
+```
 
 Alternatively, store the selection and other `K6_*` variables in the trusted,
 shell-compatible `tests/load/.env` file and run:

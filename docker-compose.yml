@@ -1,5 +1,5 @@
 services:
-  app:
+  server:
     build: .
     container_name: auth_service_server
     init: true
@@ -161,7 +161,7 @@ services:
       timeout: 3s
       retries: 5
     restart: unless-stopped
-
+  
   # monitoring services:
   prometheus:
     image: prom/prometheus:latest

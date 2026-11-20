@@ -9,14 +9,19 @@ const {
 } = require('#src/repositories/index.js');
 const createEmailService = require('./email.service');
 const { generatePasswordResetToken, verifyJWTtoken } = require('#src/utils/jwt.js');
-const { PASSWORD_RESET_PURPOSE } = require('#src/constants/auth.js');
+const {
+    AUTH_ROUTES,
+    PASSWORD_RESET_PURPOSE,
+    EMAIL_SUBJECTS,
+    AUTH_MESSAGES,
+    COALESCING
+} = require('#src/constants/index.js');
 const defaultLogger = require('#src/utils/logger.js');
 const requestCoalescer = require('#src/lib/requestCoalescer.js')
 const { createCoalescingKey } = require('#src/lib/index.js');
 
 
-const CHANGE_PASSWORD_PATH = '/v1/auth/change-password';
-const RESPONSE_MESSAGE = 'If an account exists for this email, a password reset link has been sent.';
+const RESPONSE_MESSAGE = AUTH_MESSAGES.PASSWORD_RESET_REQUEST_SENT;
 
 const createForgotPasswordService = ({
     userRepository,
@@ -45,9 +50,9 @@ const createForgotPasswordService = ({
     }
 
     const coalescingKey = createCoalescingKey({
-        db: "mysql",
-        repository: "userRepository",
-        method: "findByEmail"
+        db: COALESCING.DATABASES.MYSQL,
+        repository: COALESCING.MYSQL.REPOSITORIES.USER,
+        method: COALESCING.MYSQL.METHODS.USER.FIND_BY_EMAIL
     });
 
     const ttlSeconds = config.auth.jwt.jwtPasswordResetTokenTtlSeconds;
@@ -74,7 +79,7 @@ const createForgotPasswordService = ({
     };
 
     const createResetUrl = (token) => {
-        const resetUrl = new URL(CHANGE_PASSWORD_PATH, config.apps.mainApp.apiBaseUrl);
+        const resetUrl = new URL(AUTH_ROUTES.CHANGE_PASSWORD, config.apps.mainApp.apiBaseUrl);
 
         if (!['http:', 'https:'].includes(resetUrl.protocol)) {
             throw new Error('API_BASE_URL must be a valid HTTP(S) URL');
@@ -123,7 +128,7 @@ const createForgotPasswordService = ({
         await getEmailService().sendEmail(
             {
                 to: user.email,
-                subject: 'Reset your password',
+                subject: EMAIL_SUBJECTS.RESET_PASSWORD,
                 text: [
                     `Hello ${name},`,
                     '',

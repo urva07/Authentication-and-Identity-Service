@@ -1,7 +1,14 @@
-const getKey = (userId) => `lock:user:${userId}`
+const { REDIS_CONSTANTS } = require('#src/constants/index.js');
+
+const getKey = (userId) =>
+    `${REDIS_CONSTANTS.USER_LOCK_KEY_PREFIX}:${userId}`;
 
 const createUserLockRepository = (redis) => ({
-    acquire: async (userId, token, ttl = 60) => {
+    acquire: async (
+        userId,
+        token,
+        ttl = REDIS_CONSTANTS.USER_LOCK_TTL_SECONDS
+    ) => {
         // The token proves ownership: if this lock expires and another caller acquires 
         // it, the old caller cannot accidentally release the new caller's lock.
         return redis.set(

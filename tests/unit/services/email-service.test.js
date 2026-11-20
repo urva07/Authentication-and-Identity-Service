@@ -1,5 +1,6 @@
 const { describe, test, jest: jestApi, expect } = require('@jest/globals');
 const createEmailService = require('../../../src/services/mainApp/auth/email.service');
+const { ExternalServiceTimeoutError } = require('../../../src/errors');
 
 describe('email service', () => {
     const emailConfig = {
@@ -68,6 +69,23 @@ describe('email service', () => {
             subject: 'Subject',
             text: 'Message'
         })).rejects.toBe(error);
+    });
+
+    test('rejects when an abort signal is triggered', async () => {
+        const abortController = new AbortController();
+        const transporter = {
+            sendMail: jestApi.fn(() => new Promise(() => {}))
+        };
+        const emailService = createEmailService({ transporter, emailConfig });
+        const sending = emailService.sendEmail({
+            to: 'user@example.com',
+            subject: 'Subject',
+            text: 'Message'
+        }, abortController.signal);
+
+        abortController.abort();
+
+        await expect(sending).rejects.toBeInstanceOf(ExternalServiceTimeoutError);
     });
 
     test.each([

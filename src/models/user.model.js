@@ -1,4 +1,5 @@
 const { DataTypes } = require('sequelize');
+const { VALIDATION_LIMITS } = require('#src/constants/index.js');
 
 const defineUser = (sequelize) =>
     sequelize.define(
@@ -18,15 +19,15 @@ const defineUser = (sequelize) =>
                 }
             },
             firstName: {
-                type: DataTypes.STRING(100),
+                type: DataTypes.STRING(VALIDATION_LIMITS.NAME_MAX_LENGTH),
                 allowNull: true
             },
             lastName: {
-                type: DataTypes.STRING(100),
+                type: DataTypes.STRING(VALIDATION_LIMITS.NAME_MAX_LENGTH),
                 allowNull: true
             },
             phone: {
-                type: DataTypes.STRING(30),
+                type: DataTypes.STRING(VALIDATION_LIMITS.PHONE_MAX_LENGTH),
                 allowNull: true,
                 unique: true
             },
@@ -35,11 +36,11 @@ const defineUser = (sequelize) =>
                 allowNull: true
             },
             gender: {
-                type: DataTypes.STRING(30),
+                type: DataTypes.STRING(VALIDATION_LIMITS.GENDER_MAX_LENGTH),
                 allowNull: true
             },
             profilePhoto: {
-                type: DataTypes.STRING(500),
+                type: DataTypes.STRING(VALIDATION_LIMITS.PROFILE_PHOTO_MAX_LENGTH),
                 allowNull: true
             },
             profileCompleted: {

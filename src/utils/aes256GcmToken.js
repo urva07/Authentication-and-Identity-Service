@@ -3,6 +3,7 @@ const {
     createDecipheriv, 
     randomBytes 
 } = require('node:crypto');
+const { JWT_CLAIMS } = require('#src/constants/index.js');
 
 
 const generateAes256GcmToken = (payload, encryptionKey) => {
@@ -47,7 +48,7 @@ const verifyAes256GcmTokenWithExpiry = (token, encryptionKey) => {
             typeof payload?.email === 'string' &&
             typeof payload?.passwordHash === 'string' &&
             typeof payload?.name === 'string' &&
-            typeof payload?.sub === 'string' &&
+            typeof payload?.[JWT_CLAIMS.SUBJECT] === 'string' &&
             Number.isFinite(payload?.exp) &&
             typeof payload?.jti === 'string';
     if (!hasValidShape || !payload?.exp || payload.exp <= Math.floor(Date.now() / 1000)) {

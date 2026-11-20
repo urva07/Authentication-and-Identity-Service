@@ -1,6 +1,7 @@
 const jwt = require("jsonwebtoken");
 const config = require('#src/config/config/index.js');
 const { generateUUID } = require('./userIdGenerator.js');
+const { JWT_CLAIMS } = require('#src/constants/index.js');
 
 
 const generateJWTtoken = ({ 
@@ -30,7 +31,7 @@ const verifyJWTtoken = ({
 const generateAccessToken = (userId) => {
     return generateJWTtoken({
         payload: { 
-            sub: String(userId) 
+            [JWT_CLAIMS.SUBJECT]: String(userId)
         },
         expiry: config.auth.jwt.jwtAccessTokenExpiration,
         secret: config.auth.jwt.jwtAccessTokenSecret
@@ -40,7 +41,7 @@ const generateAccessToken = (userId) => {
 const generateRefreshToken = (userId) => {
     return generateJWTtoken({
         payload: { 
-            sub: String(userId) 
+            [JWT_CLAIMS.SUBJECT]: String(userId)
         },
         expiry: config.auth.jwt.jwtRefreshTokenExpiration,
         secret: config.auth.jwt.jwtRefreshTokenSecret
@@ -54,9 +55,9 @@ const generatePasswordResetToken = ({
 }) => {
     return generateJWTtoken({
         payload: { 
-            sub: String(userId),
+            [JWT_CLAIMS.SUBJECT]: String(userId),
             email,
-            purpose
+            [JWT_CLAIMS.PURPOSE]: purpose
         },
         expiry: config.auth.jwt.jwtPasswordResetTokenTtlSeconds,
         secret: config.auth.jwt.jwtPasswordResetTokenSecret

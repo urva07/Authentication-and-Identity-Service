@@ -1,8 +1,9 @@
 const stableStringify = require("fast-json-stable-stringify");
+const { COALESCING } = require('#src/constants/index.js');
 
 
-const allowedRedisInstances = ['userCacheInstance', 'sessionInstance'];
-const allowedDbs = ['redis', 'mongodb', 'mysql'];
+const allowedRedisInstances = Object.values(COALESCING.REDIS_INSTANCES);
+const allowedDbs = Object.values(COALESCING.DATABASES);
 
 function createCoalescingKey({db, redisInstance, repository, method}) {
     if (!db || !repository || !method) {

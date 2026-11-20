@@ -2,6 +2,7 @@ const { describe, expect, jest: jestApi, test } = require('@jest/globals');
 const createProfileCacheRepository = require('../../../src/repositories/redis/userCacheInstance/profileCache.repository');
 const createUserExistenceRepository = require('../../../src/repositories/redis/userCacheInstance/userExistence.repository');
 const createUserLockRepository = require('../../../src/repositories/redis/sessionInstance/userLock.repository');
+const { REDIS_CONSTANTS } = require('../../../src/constants');
 
 describe('profile cache repository', () => {
     test('reads and parses a cached profile or returns null on a miss', async () => {
@@ -69,11 +70,13 @@ describe('session user lock repository', () => {
         await expect(lock.isLocked('u1')).resolves.toBe(true);
 
         expect(redis.set).toHaveBeenCalledWith(
-            'lock:user:u1',
+            `${REDIS_CONSTANTS.USER_LOCK_KEY_PREFIX}:u1`,
             'cache-token',
-            { NX: true, EX: 60 }
+            { NX: true, EX: REDIS_CONSTANTS.USER_LOCK_TTL_SECONDS }
         );
-        expect(redis.get).toHaveBeenCalledWith('lock:user:u1');
+        expect(redis.get).toHaveBeenCalledWith(
+            `${REDIS_CONSTANTS.USER_LOCK_KEY_PREFIX}:u1`
+        );
     });
 
     test('reports an unlocked user and releases only the owning token', async () => {
@@ -89,7 +92,7 @@ describe('session user lock repository', () => {
         expect(redis.eval).toHaveBeenCalledWith(
             expect.stringContaining('redis.call("GET", KEYS[1])'),
             {
-                keys: ['lock:user:u1'],
+                keys: [`${REDIS_CONSTANTS.USER_LOCK_KEY_PREFIX}:u1`],
                 arguments: ['cache-token']
             }
         );

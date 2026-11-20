@@ -18,6 +18,7 @@ const { AuthenticationError } = require('#src/errors/index.js');
 const requestCoalescer = require('#src/lib/requestCoalescer.js')
 const { createCoalescingKey } = require('#src/lib/index.js');
 const { cacheAuthenticatedUser } = require('#src/lib/index.js');
+const { COALESCING, JWT_CLAIMS } = require('#src/constants/index.js');
 
 
 const createJwtAuthenticationCallback = ({
@@ -26,19 +27,19 @@ const createJwtAuthenticationCallback = ({
     userLockRepository
 } = {}) => {
     const coalescingKey = createCoalescingKey({
-        db: "mysql",
-        repository: "userRepository",
-        method: "findById"
+        db: COALESCING.DATABASES.MYSQL,
+        repository: COALESCING.MYSQL.REPOSITORIES.USER,
+        method: COALESCING.MYSQL.METHODS.USER.FIND_BY_ID
     });
 
     return async (payload, done) => {
         try {
             logger.debug('[passport-jwt] Looking up user for JWT authentication');
 
-            if (!payload.sub) {
+            if (!payload[JWT_CLAIMS.SUBJECT]) {
                 return done(new AuthenticationError("No sub received on payload"));
             }
-            const userId = payload.sub
+            const userId = payload[JWT_CLAIMS.SUBJECT];
 
             const fetchUser = async () => {
                 userRepository = userRepository || getUserRepository();

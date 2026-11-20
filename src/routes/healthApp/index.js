@@ -6,22 +6,19 @@ const {
         v1: { 
             "metrics.controller": createMetricsController,
             "probes.controller": {
+                createStartupController,
                 createLivenessController,
                 createReadinessController
             }
         } 
     } 
 } = require('#src/controllers/index.js');
+const logger = require('#src/utils/logger.js');
 
 
 const router = express.Router();
 
-router.get('/startup', (req, res) => {
-    res.status(200).json({
-        success: true,
-        message: 'Startup check passed'
-    });
-});
+router.get('/startup', createStartupController().getStartup);
 
 router.get(
     '/live',
@@ -39,6 +36,14 @@ router.use((req, res) => {
     res.status(404).json({
         success: false,
         message: 'Endpoint not found'
+    });
+});
+
+router.use((err, req, res, next) => {
+    logger.error(err);
+    res.status(500).json({
+        success: false,
+        message: 'Internal server error'
     });
 });
 

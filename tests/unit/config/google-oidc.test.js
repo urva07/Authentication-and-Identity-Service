@@ -41,6 +41,7 @@ const profile = {
 
 const setup = ({
     existingUser = null,
+    lookupError = null,
     dbUser = {
         id: 'persisted-user-id',
         firstName: profile.name.givenName,
@@ -51,7 +52,9 @@ const setup = ({
 } = {}) => {
     const transaction = { commit: jestApi.fn(), rollback: jestApi.fn() };
     const userRepository = {
-        findUserWithIdentityProvider: jestApi.fn().mockResolvedValue(existingUser),
+        findUserWithIdentityProvider: lookupError
+            ? jestApi.fn().mockRejectedValue(lookupError)
+            : jestApi.fn().mockResolvedValue(existingUser),
         createButIgnoreIfExists: jestApi.fn().mockResolvedValue(undefined),
         findByEmail: jestApi.fn().mockResolvedValue(dbUser)
     };
@@ -204,5 +207,16 @@ describe('Google OIDC authentication callback', () => {
         expect(transaction.rollback).toHaveBeenCalledTimes(1);
         expect(transaction.commit).not.toHaveBeenCalled();
         expect(done).toHaveBeenCalledWith(identityError);
+    });
+
+    test('passes an unexpected identity lookup error to Passport', async () => {
+        const lookupError = new Error('Identity lookup failed');
+        const { done, result } = setup({ lookupError }).run();
+
+        const { error, user } = await result;
+
+        expect(error).toBe(lookupError);
+        expect(user).toBeUndefined();
+        expect(done).toHaveBeenCalledWith(lookupError);
     });
 });

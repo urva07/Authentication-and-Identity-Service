@@ -110,4 +110,39 @@ describe('authentication middleware', () => {
     test('rejects an unsupported authentication source', () => {
         expect(() => authenticate({ source: 'query' })).toThrow(TypeError);
     });
+
+    test('rejects an unsupported token type', () => {
+        expect(() => authenticate({
+            source: 'header',
+            tokenType: 'session',
+            userRepository
+        })).toThrow(TypeError);
+    });
+
+    test('returns authentication failure when the token payload has no matching user', async () => {
+        const token = jwt.sign({ sub: 'missing' }, jwtSecret);
+        findById.mockResolvedValue(null);
+        const next = jestApi.fn();
+
+        await authenticate({ source: 'header', userRepository })({
+            headers: { authorization: `Bearer ${token}` }
+        }, {}, next);
+
+        expect(next).toHaveBeenCalledWith(expect.objectContaining({
+            statusCode: 401
+        }));
+    });
+
+    test('returns unexpected verification errors unchanged', async () => {
+        const next = jestApi.fn();
+        const repositoryError = new Error('database unavailable');
+        findById.mockRejectedValue(repositoryError);
+        const token = jwt.sign({ sub: '42' }, jwtSecret);
+
+        await authenticate({ source: 'header', userRepository })({
+            headers: { authorization: `Bearer ${token}` }
+        }, {}, next);
+
+        expect(next).toHaveBeenCalledWith(repositoryError);
+    });
 });

@@ -5,6 +5,7 @@ const { AuthenticationError } = require('#src/errors/index.js');
 const logger = require('#src/utils/logger.js');
 const requestCoalescer = require('#src/lib/requestCoalescer.js')
 const { createCoalescingKey } = require('#src/lib/index.js');
+const { COALESCING } = require('#src/constants/index.js');
 
 
 const createBasicAuthenticationCallback = ({
@@ -12,9 +13,9 @@ const createBasicAuthenticationCallback = ({
 } = {}) => {
 
     const coalescingKey = createCoalescingKey({
-        db: "mysql",
-        repository: "userRepository",
-        method: "findByEmailWithPassword"
+        db: COALESCING.DATABASES.MYSQL,
+        repository: COALESCING.MYSQL.REPOSITORIES.USER,
+        method: COALESCING.MYSQL.METHODS.USER.FIND_BY_EMAIL_WITH_PASSWORD
     });
 
     return async (email, password, done) => {

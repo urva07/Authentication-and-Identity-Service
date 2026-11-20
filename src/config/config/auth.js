@@ -1,3 +1,6 @@
+const { AUTH_COOKIE_NAMES } = require('#src/constants/index.js');
+
+
 module.exports = {
     ingress: {
         sharedSecret: process.env.INGRESS_SHARED_SECRET
@@ -34,7 +37,7 @@ module.exports = {
         jwtAlgorithm: process.env.JWT_ALGORITHM || 'HS256',
         cookieOptions: {
             refresh: {
-                name: process.env.JWT_REFRESH_TOKEN_COOKIE_NAME || 'refreshToken',
+                name: process.env.JWT_REFRESH_TOKEN_COOKIE_NAME || AUTH_COOKIE_NAMES.REFRESH,
                 httpOnly: process.env.JWT_REFRESH_TOKEN_COOKIE_HTTP_ONLY !== 'false',
                 secure: process.env.NODE_ENV === 'production' && process.env.JWT_REFRESH_TOKEN_COOKIE_SECURE === 'true',
                 sameSite: process.env.JWT_REFRESH_TOKEN_COOKIE_SAME_SITE || 'strict',
@@ -42,7 +45,7 @@ module.exports = {
                 maxAge: process.env.JWT_REFRESH_TOKEN_COOKIE_EXPIRATION_MILI,
             },
             access: {
-                name: process.env.JWT_ACCESS_TOKEN_COOKIE_NAME || 'accessToken',
+                name: process.env.JWT_ACCESS_TOKEN_COOKIE_NAME || AUTH_COOKIE_NAMES.ACCESS,
                 httpOnly: process.env.JWT_ACCESS_TOKEN_COOKIE_HTTP_ONLY || false,
                 secure: process.env.NODE_ENV === 'production' && process.env.JWT_ACCESS_TOKEN_COOKIE_SECURE === 'true',
                 sameSite: process.env.JWT_ACCESS_TOKEN_COOKIE_SAME_SITE || 'lax',

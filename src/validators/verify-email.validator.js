@@ -1,8 +1,9 @@
 const { z } = require('zod');
 const { ValidationError } = require('../errors');
+const { VALIDATION_LIMITS } = require('#src/constants/index.js');
 
 const verifyEmailQuerySchema = z.object({
-    token: z.string().min(1).max(4096)
+    token: z.string().min(1).max(VALIDATION_LIMITS.TOKEN_MAX_LENGTH)
 });
 
 const validateVerifyEmail = (req, res, next) => {

@@ -11,6 +11,7 @@ const middlewares = require('#src/middlewares/index.js');
 const { "mainApp.services": { "auth.services": services } }= require('#src/services/index.js');
 const oidcRouter = require('./OIDC');
 const passport = require('passport');
+const { AUTH_TOKENS, PASSPORT_STRATEGIES } = require('#src/constants/index.js');
 
 
 const notImplemented = (req, res) => {
@@ -50,13 +51,13 @@ const changePasswordController = controllers['change-password.controller'](
 router.post(
     '/verify',
     validators['verify.validator'].post, 
-    middlewares['passportJwt.middleware']({ type: 'access', source: 'header' }), 
+    middlewares['passportJwt.middleware']({ type: AUTH_TOKENS.ACCESS, source: 'header' }), 
     verifyController.post
 );
 router.post(
     '/login', 
     validators['login.validator'].post, 
-    passport.authenticate('basic', { session: false }),
+    passport.authenticate(PASSPORT_STRATEGIES.BASIC, { session: false }),
     loginController.post
 );
 router.post(
@@ -67,7 +68,7 @@ router.post(
 router.post(
     '/refresh', 
     validators['refresh.validator'].post, 
-    middlewares['passportJwt.middleware']({ type: 'refresh', source: 'cookie' }), 
+    middlewares['passportJwt.middleware']({ type: AUTH_TOKENS.REFRESH, source: 'cookie' }), 
     refreshController.post
 );
 router.post(

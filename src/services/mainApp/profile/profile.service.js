@@ -21,6 +21,7 @@ const { createCoalescingKey } = require('#src/lib/index.js');
 const defaultLogger = require('#src/utils/logger.js');
 const { generateUUID } = require('#src/utils/userIdGenerator.js');
 const { retryWithExponentialBackoff } = require('#src/lib/index.js');
+const { COALESCING } = require('#src/constants/index.js');
 
 
 const toDateOnly = (value) => {
@@ -69,9 +70,9 @@ const createProfileService = ({
     }
 
     const coalescingKey = createCoalescingKey({
-        db: "mysql",
-        repository: "userRepository",
-        method: "findById"
+        db: COALESCING.DATABASES.MYSQL,
+        repository: COALESCING.MYSQL.REPOSITORIES.USER,
+        method: COALESCING.MYSQL.METHODS.USER.FIND_BY_ID
     });
 
     const findProfileById = (profileId, logger = defaultLogger) => {

@@ -1,6 +1,7 @@
 'use strict';
 
 const { DataTypes, Sequelize } = require('sequelize');
+const { VALIDATION_LIMITS } = require('../src/constants');
 
 
 const timestamps = {
@@ -30,15 +31,15 @@ module.exports = {
                 allowNull: true
             },
             first_name: {
-                type: DataTypes.STRING(100),
+                type: DataTypes.STRING(VALIDATION_LIMITS.NAME_MAX_LENGTH),
                 allowNull: true
             },
             last_name: {
-                type: DataTypes.STRING(100),
+                type: DataTypes.STRING(VALIDATION_LIMITS.NAME_MAX_LENGTH),
                 allowNull: true
             },
             phone: {
-                type: DataTypes.STRING(30),
+                type: DataTypes.STRING(VALIDATION_LIMITS.PHONE_MAX_LENGTH),
                 allowNull: true
             },
             date_of_birth: {
@@ -46,11 +47,11 @@ module.exports = {
                 allowNull: true
             },
             gender: {
-                type: DataTypes.STRING(30),
+                type: DataTypes.STRING(VALIDATION_LIMITS.GENDER_MAX_LENGTH),
                 allowNull: true
             },
             profile_photo: {
-                type: DataTypes.STRING(500),
+                type: DataTypes.STRING(VALIDATION_LIMITS.PROFILE_PHOTO_MAX_LENGTH),
                 allowNull: true
             },
             profile_completed: {

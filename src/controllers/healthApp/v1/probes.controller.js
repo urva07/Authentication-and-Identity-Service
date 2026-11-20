@@ -53,6 +53,7 @@ const createReadinessController = (sequelize) => ({
 
 
 module.exports = {
+    createStartupController,
     createLivenessController,
     createReadinessController
 };

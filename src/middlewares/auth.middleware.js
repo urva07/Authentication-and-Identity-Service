@@ -9,14 +9,15 @@ const {
 let logger = require('#src/utils/logger.js');
 const requestCoalescer = require('#src/lib/requestCoalescer.js')
 const { createCoalescingKey } = require('#src/lib/index.js');
+const { AUTH_TOKENS, COALESCING, JWT_CLAIMS } = require('#src/constants/index.js');
 
 
 const authenticationSources = ['header', 'cookie'];
-const tokenTypes = ['access', 'refresh'];
+const tokenTypes = [AUTH_TOKENS.ACCESS, AUTH_TOKENS.REFRESH];
 
 const authenticate = ({
     source, 
-    tokenType = 'access',
+    tokenType = AUTH_TOKENS.ACCESS,
     userRepository
 }) => {
     if (!authenticationSources.includes(source)) {
@@ -43,14 +44,18 @@ const authenticate = ({
                 return bearerMatch?.[1];
             };
         }
-        return (req) => req.cookies?.[tokenType === 'access'? config.auth.jwt.cookieOptions.access.name : config.auth.jwt.cookieOptions.refresh.name];
+        return (req) => req.cookies?.[
+            tokenType === AUTH_TOKENS.ACCESS
+                ? config.auth.jwt.cookieOptions.access.name
+                : config.auth.jwt.cookieOptions.refresh.name
+        ];
     }
     const extractToken = createTokenExtractor();
 
     const coalescingKey = createCoalescingKey({
-        db: "mysql",
-        repository: "userRepository",
-        method: "findById"
+        db: COALESCING.DATABASES.MYSQL,
+        repository: COALESCING.MYSQL.REPOSITORIES.USER,
+        method: COALESCING.MYSQL.METHODS.USER.FIND_BY_ID
     });
 
     return async (req, res, next) => {
@@ -64,7 +69,7 @@ const authenticate = ({
             return next(new AuthenticationError());
         }
 
-        const jwtSecret = tokenType === 'access'
+        const jwtSecret = tokenType === AUTH_TOKENS.ACCESS
             ? config.auth.jwt.jwtAccessTokenSecret
             : config.auth.jwt.jwtRefreshTokenSecret;
 
@@ -82,7 +87,7 @@ const authenticate = ({
                 secret: jwtSecret
             });
             userRepository = userRepository || getUserRepository();
-            const args = [payload.sub];
+            const args = [payload[JWT_CLAIMS.SUBJECT]];
 
             const user = await requestCoalescer(
                 coalescingKey(args),

@@ -8,12 +8,40 @@ const METHOD = (__ENV.K6_METHOD || 'POST').toUpperCase();
 const payloadPath = ROUTE ? ROUTE.split('?')[0].replace(/[^a-zA-Z0-9]/g, '_') : '';
 const payloadKey = `K6_METHOD_${METHOD}_PATH_${payloadPath}_PAYLOAD`;
 const PAYLOAD_TEXT = __ENV.K6_PAYLOAD ?? __ENV[payloadKey];
+const headersKey = `K6_METHOD_${METHOD}_PATH_${payloadPath}_HEADERS`;
+const cookiesKey = `K6_METHOD_${METHOD}_PATH_${payloadPath}_COOKIES`;
+const HEADERS_TEXT = __ENV.K6_HEADERS;
+const ROUTE_HEADERS_TEXT = __ENV[headersKey];
+const COOKIES_TEXT = __ENV.K6_COOKIES;
+const ROUTE_COOKIES_TEXT = __ENV[cookiesKey];
 const VUS = Number(__ENV.K6_VUS ?? 1);
 const DURATION = __ENV.K6_DURATION || '60s';
 const EXPECTED_STATUS = Number(__ENV.K6_EXPECTED_STATUS ?? 200);
 const ALLOWED_METHODS = ['DELETE', 'GET', 'HEAD', 'OPTIONS', 'PATCH', 'POST', 'PUT'];
 const MAX_VUS = 20;
 const MAX_DURATION_SECONDS = 600;
+
+function parseJsonObject(text, variableName) {
+    if (!text) {
+        return {};
+    }
+    try {
+        const value = JSON.parse(text);
+        if (value === null || Array.isArray(value) || typeof value !== 'object') {
+            throw new Error();
+        }
+        return value;
+    } catch {
+        throw new Error(`${variableName} must be a valid JSON object.`);
+    }
+}
+
+function mergeJsonObjects(globalText, routeText, globalName, routeName) {
+    return {
+        ...parseJsonObject(globalText, globalName),
+        ...parseJsonObject(routeText, routeName)
+    };
+}
 
 let payload = null;
 if (PAYLOAD_TEXT) {
@@ -23,6 +51,19 @@ if (PAYLOAD_TEXT) {
         throw new Error(`${__ENV.K6_PAYLOAD !== undefined ? 'K6_PAYLOAD' : payloadKey} must be a valid JSON value.`);
     }
 }
+
+const customHeaders = mergeJsonObjects(
+    HEADERS_TEXT,
+    ROUTE_HEADERS_TEXT,
+    'K6_HEADERS',
+    headersKey
+);
+const customCookies = mergeJsonObjects(
+    COOKIES_TEXT,
+    ROUTE_COOKIES_TEXT,
+    'K6_COOKIES',
+    cookiesKey
+);
 
 
 export const options = {
@@ -69,7 +110,11 @@ export default function () {
     const requestUrl = `${BASE_URL}${ROUTE}`;
     const requestBody = PAYLOAD_TEXT ? JSON.stringify(payload) : null;
     const params = {
-        headers: requestBody === null ? {} : { 'Content-Type': 'application/json' },
+        headers: {
+            ...(requestBody === null ? {} : { 'Content-Type': 'application/json' }),
+            ...customHeaders
+        },
+        cookies: customCookies,
         tags: { name: 'route_test' }
     };
     const response = http.request(METHOD, requestUrl, requestBody, params);

@@ -1,6 +1,7 @@
 const { describe, beforeEach, afterEach, test, expect } = require('@jest/globals');
 const { DataTypes, Sequelize } = require('sequelize');
 const initializeModels = require('../../../src/models');
+const { IDENTITY_PROVIDERS } = require('../../../src/constants');
 
 describe('MySQL user models', () => {
     let sequelize;
@@ -48,6 +49,9 @@ describe('MySQL user models', () => {
             false
         );
         expect(models.IdentityProvider.options.updatedAt).toBe(false);
+        expect(
+            models.IdentityProvider.rawAttributes.provider.values
+        ).toEqual([IDENTITY_PROVIDERS.GOOGLE]);
     });
 
     test('sets password and one-to-many identity provider associations', () => {

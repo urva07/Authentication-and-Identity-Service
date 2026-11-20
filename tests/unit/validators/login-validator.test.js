@@ -36,4 +36,16 @@ describe('login POST validator', () => {
             password: 'secret'
         }).success).toBe(false);
     });
+
+    test('passes a validation error to the next middleware', () => {
+        const req = { body: { email: 'invalid', password: 'x' } };
+        const next = jestApi.fn();
+
+        loginValidator.post(req, {}, next);
+
+        expect(next).toHaveBeenCalledWith(expect.objectContaining({
+            name: 'ValidationError'
+        }));
+        expect(req.body).toEqual({ email: 'invalid', password: 'x' });
+    });
 });

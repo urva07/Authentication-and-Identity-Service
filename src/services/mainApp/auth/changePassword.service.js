@@ -12,7 +12,7 @@ const {
 const { hashPassword } = require('#src/utils/hashPasswordAndVerify.js');
 const { verifyJWTtoken } = require('#src/utils/jwt.js');
 const defaultLogger = require('#src/utils/logger.js');
-const { PASSWORD_RESET_PURPOSE } = require('#src/constants/auth.js');
+const { JWT_CLAIMS, PASSWORD_RESET_PURPOSE } = require('#src/constants/index.js');
 const { 
     dbs: { 
         mysql: { 
@@ -83,9 +83,9 @@ const createChangePasswordService = ({
         if (
             !payload ||
             typeof payload !== 'object' ||
-            payload.purpose !== PASSWORD_RESET_PURPOSE ||
-            typeof payload.sub !== 'string' ||
-            payload.sub.length === 0 ||
+            payload[JWT_CLAIMS.PURPOSE] !== PASSWORD_RESET_PURPOSE ||
+            typeof payload[JWT_CLAIMS.SUBJECT] !== 'string' ||
+            payload[JWT_CLAIMS.SUBJECT].length === 0 ||
             typeof payload.email !== 'string' ||
             payload.email.length === 0 ||
             typeof payload.jti !== 'string' ||
@@ -113,7 +113,7 @@ const createChangePasswordService = ({
         const passwordHash = await hashPassword(newPassword);
 
         await mysqlSequelizeClient.transaction(async (transaction) => {
-            const user = await users.findById(payload.sub, {
+            const user = await users.findById(payload[JWT_CLAIMS.SUBJECT], {
                 transaction,
                 lock: transaction.LOCK.UPDATE
             });
@@ -152,7 +152,7 @@ const createChangePasswordService = ({
             }
         });
 
-        logger.debug('Password reset completed', { userId: payload.sub });
+        logger.debug('Password reset completed', { userId: payload[JWT_CLAIMS.SUBJECT] });
         return { 
             success: true, 
             message: SUCCESS_MESSAGE 

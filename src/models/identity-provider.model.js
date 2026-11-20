@@ -1,4 +1,5 @@
 const { DataTypes } = require('sequelize');
+const { IDENTITY_PROVIDERS } = require('#src/constants/index.js');
 
 const defineIdentityProvider = (sequelize) =>
     sequelize.define(
@@ -14,7 +15,7 @@ const defineIdentityProvider = (sequelize) =>
                 allowNull: false
             },
             provider: {
-                type: DataTypes.ENUM('google'),
+                type: DataTypes.ENUM(IDENTITY_PROVIDERS.GOOGLE),
                 allowNull: false
             },
             providerUserId: {

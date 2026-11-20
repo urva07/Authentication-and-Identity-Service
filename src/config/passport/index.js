@@ -6,14 +6,18 @@ const { jwtStrategy } = require('./jwt.js');
 const { mysql: { getUserRepository } } = require('#src/repositories/index.js');
 const requestCoalescer = require('#src/lib/requestCoalescer.js')
 const { createCoalescingKey } = require('#src/lib/index.js');
+const {
+    PASSPORT_STRATEGIES,
+    COALESCING
+} = require('#src/constants/index.js');
 
 
 const initializePassport = (session=true) => {
     if (session) {
         const coalescingKey = createCoalescingKey({
-            db: "mysql",
-            repository: "userRepository",
-            method: "findById"
+            db: COALESCING.DATABASES.MYSQL,
+            repository: COALESCING.MYSQL.REPOSITORIES.USER,
+            method: COALESCING.MYSQL.METHODS.USER.FIND_BY_ID
         });
 
         passport.serializeUser((user, done) => done(null, user.id));
@@ -31,14 +35,14 @@ const initializePassport = (session=true) => {
         });
     }
 
-    passport.use('basic', basicStrategy);
-    passport.use('google', googleOidcStrategy);
-    passport.use('jwtRefreshFromCookie', jwtStrategy(
+    passport.use(PASSPORT_STRATEGIES.BASIC, basicStrategy);
+    passport.use(PASSPORT_STRATEGIES.GOOGLE, googleOidcStrategy);
+    passport.use(PASSPORT_STRATEGIES.JWT_REFRESH_COOKIE, jwtStrategy(
         config.auth.jwt.jwtRefreshTokenSecret,
         'cookie',
         config.auth.jwt.cookieOptions.refresh.name
     ));
-    passport.use('jwtAccessFromHeader', jwtStrategy(
+    passport.use(PASSPORT_STRATEGIES.JWT_ACCESS_HEADER, jwtStrategy(
         config.auth.jwt.jwtAccessTokenSecret,
         'header'
     ));

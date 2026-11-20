@@ -28,6 +28,7 @@ const defaultLogger = require('#src/utils/logger.js');
 const requestCoalescer = require('#src/lib/requestCoalescer.js')
 const { createCoalescingKey } = require('#src/lib/index.js');
 const { cacheAuthenticatedUser } = require('#src/lib/index.js');
+const { COALESCING, JWT_CLAIMS } = require('#src/constants/index.js');
 
 
 const INVALID_LINK_MESSAGE = 'Invalid or expired verification link';
@@ -61,9 +62,9 @@ const createVerifyEmailService = ({
     const encryptionKey = createSigninTokenKey(config.auth.basic.signinAes256GcmTokenSecret);
 
     const coalescingKey = createCoalescingKey({
-        db: "mysql",
-        repository: "userRepository",
-        method: "findById"
+        db: COALESCING.DATABASES.MYSQL,
+        repository: COALESCING.MYSQL.REPOSITORIES.USER,
+        method: COALESCING.MYSQL.METHODS.USER.FIND_BY_ID
     });
 
     const decodeToken = (token) => {
@@ -86,7 +87,9 @@ const createVerifyEmailService = ({
 
     const verifyEmail = async (token, logger = defaultLogger) => {
         logger.debug('Email verification started');
-        const { email, passwordHash, name, sub } = decodeToken(token);
+        const decoded = decodeToken(token);
+        const { email, passwordHash, name } = decoded;
+        const sub = decoded[JWT_CLAIMS.SUBJECT];
 
         userRepository = userRepository || getUserRepository();
         userPasswordRepository = userPasswordRepository || getUserPasswordRepository();

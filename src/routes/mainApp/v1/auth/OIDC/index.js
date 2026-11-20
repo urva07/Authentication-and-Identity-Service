@@ -15,6 +15,7 @@ const {
         "auth.services": services
     }
 } = require('#src/services/index.js');
+const { PASSPORT_STRATEGIES } = require('#src/constants/index.js');
 
 
 const googleCallbackService = services['oidc.services']['google-callback.service'](
@@ -24,11 +25,11 @@ const googleCallbackController = controllers['google-callback.controller'](
     googleCallbackService
 );
 
-router.get('/google', passport.authenticate('google'));
+router.get(`/${PASSPORT_STRATEGIES.GOOGLE}`, passport.authenticate(PASSPORT_STRATEGIES.GOOGLE));
 
 router.get(
-    '/google/callback',
-    passport.authenticate('google', { 
+    `/${PASSPORT_STRATEGIES.GOOGLE}/callback`,
+    passport.authenticate(PASSPORT_STRATEGIES.GOOGLE, { 
         failureRedirect: 'http://localhost:3000/login',
         session: false
     }),

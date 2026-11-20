@@ -11,9 +11,13 @@ const defaultLogger = require('#src/utils/logger.js');
 const { generateUUID } = require('#src/utils/userIdGenerator.js');
 const requestCoalescer = require('#src/lib/requestCoalescer.js')
 const { createCoalescingKey } = require('#src/lib/index.js');
-
-
-const VERIFY_EMAIL_PATH = '/v1/auth/verify-email';
+const {
+    AUTH_ROUTES,
+    EMAIL_SUBJECTS,
+    AUTH_MESSAGES,
+    COALESCING,
+    JWT_CLAIMS
+} = require('#src/constants/index.js');
 
 const createSigninService = ({
     userRepository,
@@ -36,13 +40,13 @@ const createSigninService = ({
     let productionEmailService;
 
     const coalescingKey = createCoalescingKey({
-        db: "mysql",
-        repository: "userRepository",
-        method: "findByEmail"
+        db: COALESCING.DATABASES.MYSQL,
+        repository: COALESCING.MYSQL.REPOSITORIES.USER,
+        method: COALESCING.MYSQL.METHODS.USER.FIND_BY_EMAIL
     });
 
     const createVerificationUrl = (token) => {
-        let verificationUrl = new URL(VERIFY_EMAIL_PATH, config.apps.mainApp.apiBaseUrl);
+        let verificationUrl = new URL(AUTH_ROUTES.VERIFY_EMAIL, config.apps.mainApp.apiBaseUrl);
 
         if (!['http:', 'https:'].includes(verificationUrl.protocol)) {
             throw new Error('API_BASE_URL must be a valid HTTP(S) URL');
@@ -85,7 +89,7 @@ const createSigninService = ({
                 email: normalizedEmail,
                 passwordHash,
                 name,
-                sub: generateUUID(),
+                [JWT_CLAIMS.SUBJECT]: generateUUID(),
                 iat: issuedAt,
                 exp: issuedAt + tokenTtlSeconds,
                 jti: generateUUID()
@@ -106,7 +110,7 @@ const createSigninService = ({
         await getEmailService().sendEmail(
             {
                 to: normalizedEmail,
-                subject: 'Verify your email address',
+                subject: EMAIL_SUBJECTS.VERIFY_EMAIL,
                 text: [
                     `Hello ${name},`,
                     '',
@@ -123,7 +127,7 @@ const createSigninService = ({
 
         return { 
             success: true, 
-            message: "A verification link has been sent to your email. Please verify your email to continue."
+            message: AUTH_MESSAGES.VERIFICATION_SENT
         };
     };
 

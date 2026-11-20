@@ -1,4 +1,5 @@
 const passport = require('passport');
+const { AUTH_TOKENS, PASSPORT_STRATEGIES } = require('#src/constants/index.js');
 
 
 const passportJwt = ({
@@ -7,15 +8,15 @@ const passportJwt = ({
     options
 }) => {
 
-    if (type === 'access' && source === 'header') {
+    if (type === AUTH_TOKENS.ACCESS && source === 'header') {
         return passport.authenticate(
-            'jwtAccessFromHeader', 
+            PASSPORT_STRATEGIES.JWT_ACCESS_HEADER,
             { session: false, ...options }
         );
     }
-    if (type === 'refresh' && source === 'cookie') {
+    if (type === AUTH_TOKENS.REFRESH && source === 'cookie') {
         return passport.authenticate(
-            'jwtRefreshFromCookie', 
+            PASSPORT_STRATEGIES.JWT_REFRESH_COOKIE,
             { session: false, ...options }
         );
     }

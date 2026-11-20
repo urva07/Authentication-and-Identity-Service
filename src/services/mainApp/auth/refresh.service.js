@@ -1,6 +1,7 @@
 const jwtClient = require('jsonwebtoken');
 const { AppError, AuthenticationError } = require('#src/errors/index.js');
 const config = require('#src/config/config/index.js');
+const { JWT_CLAIMS } = require('#src/constants/index.js');
 const defaultLogger = require('#src/utils/logger.js');
 
 const createRefreshService = ({
@@ -25,7 +26,7 @@ const createRefreshService = ({
         }
 
         const accessToken = jwt.sign(
-            { sub: String(user.id) },
+            { [JWT_CLAIMS.SUBJECT]: String(user.id) },
             signingSecret,
             { expiresIn: config.auth.jwt.jwtAccessTokenExpiration }
         );

@@ -4,15 +4,7 @@ const {
     mysql: { 
         getUserRepository, 
         getIdentityProviderRepository 
-    },
-    redis: {
-        userCacheInstance: {
-            getUserExistenceRepository
-        },
-        sessionInstance: {
-            getUserLockRepository
-        }
-    } 
+    }
 } = require('#src/repositories/index.js');
 const { generateUUID } = require('#src/utils/userIdGenerator.js');
 const defaultLogger = require('#src/utils/logger.js');
@@ -25,6 +17,7 @@ const {
 } = require('#src/infrastructure/database/index.js');
 const requestCoalescer = require('#src/lib/requestCoalescer.js')
 const { createCoalescingKey } = require('#src/lib/index.js');
+const { IDENTITY_PROVIDERS, COALESCING } = require('#src/constants/index.js');
 
 
 const createGoogleOidcAuthenticationCallback = ({
@@ -34,9 +27,9 @@ const createGoogleOidcAuthenticationCallback = ({
 } = {}) => {
     
     const identityProviderRepositoryCoalescingKey = createCoalescingKey({
-        db: "mysql",
-        repository: "identityProviderRepository",
-        method: "findByProviderIdentity"
+        db: COALESCING.DATABASES.MYSQL,
+        repository: COALESCING.MYSQL.REPOSITORIES.IDENTITY_PROVIDER,
+        method: COALESCING.MYSQL.METHODS.IDENTITY_PROVIDER.FIND_BY_PROVIDER_IDENTITY
     });
 
     return async (req, issuer, profile, done) => {
@@ -45,7 +38,7 @@ const createGoogleOidcAuthenticationCallback = ({
             userRepository = userRepository || getUserRepository();
             identityProviderRepository = identityProviderRepository || getIdentityProviderRepository();
 
-            const args = ['google', profile.id];
+            const args = [IDENTITY_PROVIDERS.GOOGLE, profile.id];
             const existingUser = await requestCoalescer(
                 identityProviderRepositoryCoalescingKey(args),
                 () => userRepository.findUserWithIdentityProvider(...args),
@@ -102,7 +95,7 @@ const createGoogleOidcAuthenticationCallback = ({
                     await identityProviderRepository.create(
                         {
                             userId: user.id,
-                            provider: 'google',
+                            provider: IDENTITY_PROVIDERS.GOOGLE,
                             providerUserId: profile.id,
                         },
                         { 

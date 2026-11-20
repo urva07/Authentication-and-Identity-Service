@@ -18,6 +18,7 @@ const {
 const { generateRefreshToken, generateAccessToken } = require('#src/utils/jwt.js');
 const requestCoalescer = require('#src/lib/requestCoalescer.js');
 const { createCoalescingKey, cacheAuthenticatedUser } = require('#src/lib/index.js');
+const { COALESCING } = require('#src/constants/index.js');
 
 
 const INVALID_CREDENTIALS = 'Invalid login credentials';
@@ -43,15 +44,15 @@ const createLoginService = ({
     }
 
     const userRepoCoalescingKey = createCoalescingKey({
-        db: 'mysql',
-        repository: 'userRepository',
-        method: 'findByEmail'
+        db: COALESCING.DATABASES.MYSQL,
+        repository: COALESCING.MYSQL.REPOSITORIES.USER,
+        method: COALESCING.MYSQL.METHODS.USER.FIND_BY_EMAIL
     });
 
     const userPasswordRepoCoalescingKey = createCoalescingKey({
-        db: 'mysql',
-        repository: 'userPasswordRepository',
-        method: 'findByUserId'
+        db: COALESCING.DATABASES.MYSQL,
+        repository: COALESCING.MYSQL.REPOSITORIES.USER_PASSWORD,
+        method: COALESCING.MYSQL.METHODS.USER_PASSWORD.FIND_BY_USER_ID
     });
 
     const findUser = (email, logger) => {

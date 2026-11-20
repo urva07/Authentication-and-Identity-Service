@@ -88,6 +88,20 @@ is git-ignored) and run:
 | `K6_VUS`, `K6_DURATION` | Virtual users (1 to 20) and duration (up to 10 minutes, `30s` or `5m`). |
 | `K6_PAYLOAD` | JSON body; overrides the per-route payload below. |
 | `K6_METHOD_<METHOD>_PATH_<path>_PAYLOAD` | JSON body for a route, where non-alphanumeric characters of the path become `_`, for example `K6_METHOD_POST_PATH__v1_auth_login_PAYLOAD`. |
+| `K6_HEADERS`, `K6_COOKIES` | Optional JSON objects containing headers or cookies sent to every route. |
+| `K6_METHOD_<METHOD>_PATH_<path>_HEADERS`, `K6_METHOD_<METHOD>_PATH_<path>_COOKIES` | Optional route-specific JSON objects. Matching route values override global values for that key. |
+
+For example, configure a bearer token globally or a refresh cookie for one
+route:
+
+```sh
+K6_HEADERS='{"Authorization":"Bearer replace-with-test-access-token"}'
+K6_COOKIES='{"accessToken":"replace-with-test-access-token"}'
+K6_METHOD_POST_PATH__v1_auth_refresh_COOKIES='{"refreshToken":"replace-with-test-refresh-token"}'
+```
+
+Header and cookie values must be JSON objects. Do not commit real credentials,
+and use dedicated test credentials only.
 
 The test fails if fewer than 99% of checks pass or the 95th percentile request
 duration exceeds one second. Run it only against a local or test environment,

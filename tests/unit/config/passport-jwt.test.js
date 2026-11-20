@@ -34,7 +34,8 @@ jestApi.mock('#src/lib/index.js', () => {
 });
 
 const {
-    jwtAuthenticationCallback
+    jwtAuthenticationCallback,
+    jwtStrategy
 } = require('../../../src/config/passport/jwt');
 
 const setup = ({
@@ -210,5 +211,25 @@ describe('JWT authentication callback', () => {
             { id: 'user-id' },
             { id: 'user-id' }
         ]);
+    });
+});
+
+describe('JWT strategy construction', () => {
+    test('rejects unsupported token sources', () => {
+        expect(() => jwtStrategy('a'.repeat(32), 'query')).toThrow(
+            "from argument must be either 'header' or 'cookie'"
+        );
+    });
+
+    test('requires a cookie name for cookie authentication', () => {
+        expect(() => jwtStrategy('a'.repeat(32), 'cookie')).toThrow(
+            'cookieName must be provided when \'from\' is \'cookie\''
+        );
+    });
+
+    test('requires a token secret', () => {
+        expect(() => jwtStrategy(undefined, 'header')).toThrow(
+            'tokenSecret must be provided'
+        );
     });
 });
