@@ -37,7 +37,7 @@ module.exports = {
             await IdentityProvider.create(
                 {
                     userId: user.id,
-                    provider: 'development',
+                    provider: 'google',
                     providerUserId: 'development-user'
                 },
                 { transaction }
