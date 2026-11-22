@@ -65,53 +65,38 @@ Build the application:
 
 Start in the foreground:
 
-`K6_METHOD_POST_PATH__v1_auth_forgot_password_PAYLOAD`. Different paths that
-normalize to the same key share a payload; use `K6_PAYLOAD` to override it.
-An unset or empty payload sends no request body. For a route containing an ID,
-replace the ID in both the path and its payload variable name.
-
-For example, after configuring the login payload, run from the repository root:
-
-```sh
-(
-  set -a
-  source ./tests/load/.env &&
-    K6_METHOD=POST K6_PATH=/v1/auth/login k6 run tests/load/route.js
-)
+```bash
+./start.sh
 ```
 
-For another route, set `K6_METHOD` and `K6_PATH` to select its payload. The
-script checks the response status and enforces check-rate and p95 response-time
-thresholds. Routes requiring credentials can use JSON header or cookie
-configuration. For example:
+Start in detached mode:
 
-```sh
-K6_HEADERS='{"Authorization":"Bearer replace-with-test-access-token"}'
-K6_COOKIES='{"accessToken":"replace-with-test-access-token"}'
-K6_METHOD_POST_PATH__v1_auth_refresh_COOKIES='{"refreshToken":"replace-with-test-refresh-token"}'
+```bash
+./start:d.sh
 ```
 
-Alternatively, store the selection and other `K6_*` variables in the trusted,
-shell-compatible `tests/load/.env` file and run:
+Stop the running services:
 
-```sh
-(
-  set -a
-  source ./tests/load/.env && k6 run tests/load/route.js
-)
+```bash
+./stop.sh
 ```
 
-Sourcing a file executes its contents; do not source an untrusted file. Keep
-test credentials out of version control. Some routes, such as signin, may create
-accounts or otherwise change data; use dedicated test credentials and disposable
-data. Do not run load scenarios against production or shared environments; run
-them only with authorization and while monitoring rate limits, the service, and
-its backing stores.
+The scripts can forward arguments to Docker Compose. For example:
 
-## Logging
+```bash
+./start:d.sh auth_service
+./build.sh mail_service
+```
 
-Logs are JSON-friendly Pino output. Each HTTP request gets an id (`req.id`) in
-its completion log. Use `req.log` inside handlers and pass it to services so
-every log line of a request can be correlated. When shipping logs to Loki, keep
-`requestId` and `userId` as parsed fields rather than labels to avoid high
-label cardinality.
+## Ports
+
+| Service | Port |
+|---|---:|
+| Authentication API | 3000 |
+| Authentication health API | 3001 |
+| Mail service | 4000 |
+| Grafana | 3002 |
+| Prometheus | 9090 |
+| Loki | 3100 |
+| Alloy | 12345 |
+| MySQL | 3306 |
