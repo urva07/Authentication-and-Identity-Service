@@ -31,7 +31,7 @@ COPY --chown=node:node src/routes ./src/routes
 COPY --chown=node:node src/views ./src/views
 COPY --chown=node:node src/app.js src/healthApp.js src/server.js ./src/
 
-ENV NODE_ENV=development
+ENV ENVIRONMENT='development'
 
 USER root
 

@@ -1,7 +1,8 @@
-const config = require('#src/config/config/index.js');
+const config = require('#src/config/index.js');
 const { ExternalServiceTimeoutError } = require('#src/errors/index.js');
 const createMailClient = require('#src/integrations/mailClient.js');
-const defaultLogger = require('#src/utils/logger.js');
+const logger = require('#src/utils/logger.js');
+
 
 const createEmailService = ({ transporter, emailConfig = config.email } = {}) => {
     if (
@@ -17,7 +18,7 @@ const createEmailService = ({ transporter, emailConfig = config.email } = {}) =>
 
     const emailTransport = transporter || createMailClient(emailConfig);
 
-    const sendEmail = async ({ to, subject, text, html }, abortSignal, logger = defaultLogger) => {
+    const sendEmail = async ({ to, subject, text, html }) => {
         logger.debug('Validating email request');
 
         if (typeof to !== 'string' || to.trim().length === 0) {
@@ -35,14 +36,19 @@ const createEmailService = ({ transporter, emailConfig = config.email } = {}) =>
             throw new TypeError('Email text or HTML content is required');
         }
 
+        const abortController = new AbortController();
+        const abortSignal = abortController.signal;
+
         const aborted = new Promise((_, reject) => {
-            if (abortSignal) {
-                abortSignal.addEventListener('abort', () => {
-                    logger.debug('Email sending aborted due to timeout');
-                    reject(new ExternalServiceTimeoutError('Email sending aborted due to timeout'));
-                });
-            }
+            abortSignal.addEventListener('abort', () => {
+                logger.debug('Email sending aborted due to timeout');
+                reject(new ExternalServiceTimeoutError('Email sending aborted due to timeout'));
+            });
         });
+
+        const timeoutId = setTimeout(() => {
+            abortController.abort();
+        }, emailConfig.timeout || 5000);
 
         logger.debug('Sending email');
 
@@ -61,10 +67,14 @@ const createEmailService = ({ transporter, emailConfig = config.email } = {}) =>
         }).catch((error) => {
             logger.debug('Email sending failed', { error: error.message });
             throw error;
+        }).finally(() => {
+            clearTimeout(timeoutId);
+            logger.debug('Timeout cleared');
         });
     };
 
     return { sendEmail };
 };
+
 
 module.exports = createEmailService;

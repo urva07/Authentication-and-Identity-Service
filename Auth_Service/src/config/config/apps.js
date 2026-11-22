@@ -1,7 +1,7 @@
 const logger = require('#src/utils/logger.js');
 
 const appsConfig = {
-    environment: process.env.environment || 'development',
+    environment: process.env.ENVIRONMENT || 'development',
     mainApp: {
         domain: process.env.DOMAIN || 'localhost',
         port: process.env.PORT === undefined ? 3000 : Number(process.env.PORT),

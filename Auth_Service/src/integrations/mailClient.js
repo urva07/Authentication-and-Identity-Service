@@ -26,4 +26,5 @@ const createMailClient = (emailConfig = config.email) => {
     });
 };
 
+
 module.exports = createMailClient;

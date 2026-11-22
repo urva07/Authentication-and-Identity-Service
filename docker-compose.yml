@@ -1,13 +1,13 @@
 services:
-  server:
-    build: .
+  auth_service:
+    build: ./Auth_Service
     container_name: auth_service_server
     init: true
     stop_grace_period: 40s
-    env_file:
-      - .env
+    # env_file:
+    #   - .env
     volumes:
-      - .:/app
+      - ./Auth_Service:/app
       - /app/node_modules
     environment:
       environment: development
@@ -52,6 +52,21 @@ services:
     restart: unless-stopped
     command: ["npm", "run", "dev"]
 
+  mail_service:
+    build: ./Mail_Service
+    container_name: mail_service_server
+    init: true
+    stop_grace_period: 40s
+    # env_file:
+    #   - .env
+    volumes:
+      - ./Mail_Service:/app
+      - /app/node_modules
+    environment:
+      environment: development
+      PORT: 3002
+    restart: unless-stopped
+
   mysql:
     image: mysql:8.4
     container_name: auth_service_db_mysql
@@ -91,7 +106,7 @@ services:
       - "~*"
       - "+@all"
     volumes:
-      - ./conf/redis/sessionCache.conf:/usr/local/etc/redis/redis.conf:ro
+      - ./Auth_Service/conf/redis/sessionCache.conf:/usr/local/etc/redis/redis.conf:ro
       - redis_session_data:/data
     healthcheck:
       test:
@@ -121,7 +136,7 @@ services:
       - "~*"
       - "+@all"
     volumes:
-      - ./conf/redis/userCache.conf:/usr/local/etc/redis/redis.conf:ro
+      - ./Auth_Service/conf/redis/userCache.conf:/usr/local/etc/redis/redis.conf:ro
       - redis_user_cache_data:/data
     healthcheck:
       test:
@@ -151,7 +166,7 @@ services:
       - "~*"
       - "+@all"
     volumes:
-      - ./conf/redis/rateLimiter.conf:/usr/local/etc/redis/redis.conf:ro
+      - ./Auth_Service/conf/redis/rateLimiter.conf:/usr/local/etc/redis/redis.conf:ro
       - redis_rate_limit_data:/data
     healthcheck:
       test:
@@ -162,6 +177,36 @@ services:
       retries: 5
     restart: unless-stopped
   
+  redis_bullMQ:
+    image: redis:7-alpine
+    container_name: auth_service_db_redis_bullMQ
+    environment:
+      REDIS_USERNAME: app
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}
+    command:
+      - redis-server
+      - /usr/local/etc/redis/redis.conf
+      - --user
+      - default
+      - off
+      - --user
+      - ${REDIS_USERNAME:-app}
+      - on
+      - ">${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}"
+      - "~*"
+      - "+@all"
+    volumes:
+      - ./Mail_Service/conf/redis/bullMQ.conf:/usr/local/etc/redis/redis.conf:ro
+      - redis_bullMQ_data:/data
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - redis-cli --user "$$REDIS_USERNAME" --no-auth-warning -a "$$REDIS_PASSWORD" ping | grep -q PONG
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
   # monitoring services:
   prometheus:
     image: prom/prometheus:latest
@@ -223,3 +268,4 @@ volumes:
   grafana_data:
   loki_data:
   alloy_data:
+  redis_bullMQ_data:

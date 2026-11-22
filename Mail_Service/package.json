@@ -1,0 +1,29 @@
+{
+  "name": "mail_service",
+  "version": "1.0.0",
+  "description": "External mail service for microservice architecture to send mail",
+  "license": "UNLICENSED",
+  "author": "Urva Patel",
+  "type": "commonjs",
+  "main": "./src/server.js",
+  "scripts": {
+    "dev": "nodemon src/server.js",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "lint": "eslint"
+  },
+  "imports": {
+    "#src/*": "./src/*"
+  },
+  "dependencies": {
+    "bullmq": "^6.7.8",
+    "dotenv": "^18.0.10",
+    "ioredis": "^6.0.0",
+    "nodemailer": "^10.6.1",
+    "pino": "^10.4.0"
+  },
+  "devDependencies": {
+    "pino-pretty": "^13.2.0"
+  }
+}

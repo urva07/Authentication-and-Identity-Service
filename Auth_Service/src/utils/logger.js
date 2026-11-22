@@ -1,12 +1,11 @@
 const pino = require('pino');
-const config = require('../config/config');
 
 
 const logger = pino(
     { 
         level: 'debug' 
     },
-    config.apps.environment === 'development' ? pino.transport({
+    (process.env.ENVIRONMENT || 'development') === 'development' ? pino.transport({
         target: 'pino-pretty',
         options: { 
             colorize: true,

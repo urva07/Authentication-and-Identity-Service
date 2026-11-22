@@ -2,7 +2,7 @@
   "name": "Authentication_Service",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "src/server.js",
   "scripts": {
     "docker:install": "docker compose exec app npm install",
     "docker:install:dev": "docker compose exec app npm install --save-dev",
