@@ -1,12 +1,12 @@
 const pino = require('pino');
-const config = require('#src/config/config/index.js');
+const config = require('../config/config');
 
 
 const logger = pino(
     { 
         level: 'debug' 
     },
-    config.apps.mainApp.environment === 'development' ? pino.transport({
+    config.apps.environment === 'development' ? pino.transport({
         target: 'pino-pretty',
         options: { 
             colorize: true,

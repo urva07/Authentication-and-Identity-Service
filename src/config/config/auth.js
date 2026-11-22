@@ -1,7 +1,7 @@
 const { AUTH_COOKIE_NAMES } = require('#src/constants/index.js');
+const logger = require('#src/utils/logger.js');
 
-
-module.exports = {
+const authConfig = {
     ingress: {
         sharedSecret: process.env.INGRESS_SHARED_SECRET
     },
@@ -67,4 +67,32 @@ module.exports = {
             scope: process.env.OIDC_GOOGLE_SCOPE || 'openid email profile'
         }
     }
+};
+
+const criticalSecrets = [
+    ['INGRESS_SHARED_SECRET', authConfig.ingress.sharedSecret],
+    ['SESSION_SECRET', authConfig.session.secret],
+    ['JWT_SECRET', authConfig.jwt.jwtSecret],
+    ['JWT_REFRESH_TOKEN_SECRET', authConfig.jwt.jwtRefreshTokenSecret],
+    ['JWT_ACCESS_TOKEN_SECRET', authConfig.jwt.jwtAccessTokenSecret],
+    ['JWT_PASSWORD_RESET_TOKEN_SECRET', authConfig.jwt.jwtPasswordResetTokenSecret],
+    ['BASIC_SIGNIN_AES_256_GCM_TOKEN_SECRET', authConfig.basic.signinAes256GcmTokenSecret]
+];
+
+const invalidSecrets = criticalSecrets
+    .filter(([, value]) =>
+        typeof value !== 'string' ||
+        value.trim().length === 0 ||
+        Buffer.byteLength(value, 'utf8') < 32
+    )
+    .map(([name]) => name);
+
+if (invalidSecrets.length > 0) {
+    logger.fatal(
+        { invalidSecrets },
+        'Critical authentication configuration is missing or invalid'
+    );
+    process.exit(1);
 }
+
+module.exports = authConfig;

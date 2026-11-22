@@ -67,7 +67,7 @@ const startServer = async () => {
         const listeningServer = app.listen(PORT, () => {
             logger.info(
                 {
-                    environment: config.apps.mainApp.environment,
+                    environment: config.apps.environment,
                     port: PORT,
                     url: 'http://localhost:' + PORT
                 },

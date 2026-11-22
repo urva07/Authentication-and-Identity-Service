@@ -1,3 +1,5 @@
+require('dotenv').config();
+
 module.exports = {
     apps: require('./apps'),
     auth: require('./auth'),

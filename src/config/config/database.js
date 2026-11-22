@@ -39,9 +39,52 @@ const redis = {
     }
 };
 
-
-module.exports = {
+const databaseConfig = {
     mongo,
     mysql,
     redis
+};
+
+const logger = require('#src/utils/logger.js');
+
+const isMissing = (value) =>
+    typeof value !== 'string' || value.trim().length === 0;
+
+const isInvalidPort = (port) =>
+    !Number.isInteger(port) || port < 1 || port > 65535;
+
+const invalidConfigs = [];
+
+if (
+    isMissing(databaseConfig.mysql.username) ||
+    isMissing(databaseConfig.mysql.password) ||
+    isMissing(databaseConfig.mysql.host) ||
+    isMissing(databaseConfig.mysql.database) ||
+    isInvalidPort(databaseConfig.mysql.port)
+) {
+    invalidConfigs.push('MYSQL');
 }
+
+for (const [name, redisConfig] of [
+    ['SESSION_REDIS', databaseConfig.redis.sessionRedis],
+    ['USER_CACHE_REDIS', databaseConfig.redis.userCacheRedis],
+    ['RATE_LIMIT_REDIS', databaseConfig.redis.rateLimitRedis]
+]) {
+    if (
+        isMissing(redisConfig.host) ||
+        isMissing(redisConfig.password) ||
+        isInvalidPort(redisConfig.port)
+    ) {
+        invalidConfigs.push(name);
+    }
+}
+
+if (invalidConfigs.length > 0) {
+    logger.fatal(
+        { invalidConfigs },
+        'Critical database configuration is missing or invalid'
+    );
+    process.exit(1);
+}
+
+module.exports = databaseConfig;
