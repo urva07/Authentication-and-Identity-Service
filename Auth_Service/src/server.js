@@ -1,21 +1,6 @@
 const app = require('./app');
 const healthApp = require('./healthApp');
 const config = require('./config/config');
-const { 
-    initializeConnections, 
-    dbs: { 
-        mysql,
-        redis,
-    } 
-} = require('#src/infrastructure/database/index.js');
-const { 
-    mysql: { 
-        configureRepositories: configureMysqlRepositories 
-    },
-    redis: {
-        configureAllInstanceRepositories: configureRedisInstancesRepositories
-    }
-} = require('./repositories');
 const logger = require('./utils/logger');
 const { 
     openSockets: { 
@@ -56,7 +41,7 @@ const startServer = async () => {
         listeningServer.once('error', reject);
     });
 
-    startUpInitializations()
+    await startUpInitializations()
 
     mainServer = await new Promise((resolve, reject) => {
         const listeningServer = app.listen(PORT, () => {
