@@ -51,7 +51,7 @@ routes/
 | Method and path | Validator | Authentication | Controller |
 | --- | --- | --- | --- |
 | `POST /login` | `login.validator` | Passport `basic` (email and password), no session | `login.controller` |
-| `POST /signin` | `signin.validator` | none | `signin.controller` |
+| `POST /signup` | `signup.validator` | none | `signup.controller` |
 | `GET /verify-email` | `verify-email.validator` | none (signed token in the query) | `verify-email.controller` |
 | `POST /verify` | `verify.validator` | Passport JWT, access token from the `Authorization` header | `verify.controller` |
 | `POST /refresh` | `refresh.validator` | Passport JWT, refresh token from the cookie | `refresh.controller` |

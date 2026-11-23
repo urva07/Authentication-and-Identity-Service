@@ -26,8 +26,8 @@ const router = express.Router();
 const loginController = controllers['login.controller'](
     services['passport-login.service']()
 );
-const signinController = controllers['signin.controller'](
-    services['signin.service']()
+const signinController = controllers['signup.controller'](
+    services['signup.service']()
 );
 const verifyController = controllers['verify.controller'](
     services['verify.service']()
@@ -61,8 +61,8 @@ router.post(
     loginController.post
 );
 router.post(
-    '/signin', 
-    validators['signin.validator'].post,
+    '/signup', 
+    validators['signup.validator'].post,
     signinController.post
 );
 router.post(

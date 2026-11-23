@@ -7,7 +7,7 @@ const createSigninTokenKey = (tokenSecret) => {
     }
 
     return createHash('sha256')
-        .update('first-shell-project:signin-verification:v1\0')
+        .update('first-shell-project:signup-verification:v1\0')
         .update(tokenSecret)
         .digest();
 };

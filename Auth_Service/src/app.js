@@ -67,11 +67,6 @@ app.use(middlewares.cors({
     maxAge: 3600
 }));
 
-app.use(middlewares.rateLimiter({
-    windowMs: 1 * 60 * 1000, // 1 minute
-    max: 10000 // limit each IP to 100 requests per windowMs
-}));
-
 app.use(middlewares.json({
     limit: config.apps.mainApp.bodySizeLimit // limit the body to 100kb
 }));
@@ -80,6 +75,8 @@ app.use(middlewares.urlencoded({
     extended: true,
     limit: config.apps.mainApp.bodySizeLimit // limit the body to 100kb
 }));
+
+app.use(middlewares.rateLimiter);
 
 app.use(middlewares.cookieParser());
 

@@ -1,8 +1,8 @@
 const { describe, test, jest: jestApi, expect } = require('@jest/globals');
-const signinValidator = require('../../../src/validators/signin.validator');
+const signinValidator = require('../../../src/validators/signup.validator');
 const { ValidationError } = require('../../../src/errors');
 
-describe('signin POST validator', () => {
+describe('signup POST validator', () => {
     test.each([
         {
             email: 'ada@example.com',

@@ -65,7 +65,7 @@ const createSigninService = ({
         return productionEmailService;
     };
 
-    const signin = async ({ email, password, name }, signal, logger = defaultLogger) => {
+    const signup = async ({ email, password, name }, signal, logger = defaultLogger) => {
         logger.debug('Sign-in attempt started');
         userRepository = userRepository || getUserRepository();
         const normalizedEmail = email.trim().toLowerCase();
@@ -131,7 +131,7 @@ const createSigninService = ({
         };
     };
 
-    return { signin };
+    return { signup };
 };
 
 

@@ -7,7 +7,7 @@ registry:
 ```js
 const validators = require('#src/validators/index.js');
 
-router.post('/signin', validators['signin.validator'].post, signinController.post);
+router.post('/signup', validators['signup.validator'].post, signinController.post);
 ```
 
 ## Conventions
@@ -32,7 +32,7 @@ router.post('/signin', validators['signin.validator'].post, signinController.pos
 | Key | Validates | Rules |
 | --- | --- | --- |
 | `login.validator` | `post`: body | `email` (trimmed, lower-cased, valid, at most 254 characters) and `password` (4 to 15 characters). |
-| `signin.validator` | `post`: body | `email` as above, `password` (4 to 15 characters) and `name` (trimmed, 2 to 100 characters). |
+| `signup.validator` | `post`: body | `email` as above, `password` (4 to 15 characters) and `name` (trimmed, 2 to 100 characters). |
 | `verify-email.validator` | `get`: query | `token` (string, 1 to 4096 characters). Other query parameters are allowed, and `req.query` is not rewritten. |
 | `forgot-password.validator` | `post`: body | `email` (valid, trimmed). |
 | `change-password.validator` | `post`: body | `token` (1 to 4096 characters) and `newPassword` (4 to 15 characters). |
@@ -48,5 +48,5 @@ router.post('/signin', validators['signin.validator'].post, signinController.pos
 2. Register it in `index.js`.
 3. Use it in the route before authentication and the controller.
 
-Keep password length limits aligned between `login`, `signin` and
+Keep password length limits aligned between `login`, `signup` and
 `change-password`, since they are defined separately in each file.

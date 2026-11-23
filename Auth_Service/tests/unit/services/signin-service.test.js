@@ -3,9 +3,9 @@ const bcrypt = require('bcryptjs');
 const { createDecipheriv, createHash } = require('node:crypto');
 const { ConflictError } = require('../../../src/errors');
 const config = require('../../../src/config/config');
-const createSigninService = require('../../../src/services/mainApp/auth/signin.service');
+const createSigninService = require('../../../src/services/mainApp/auth/signup.service');
 
-describe('signin service', () => {
+describe('signup service', () => {
     const tokenSecret = 'b7f2c9a4e1d6380f5a0e9d3c7b1f6428c4e8a2f6d0b9137e1f5c8b3a6d2e9047';
     let userRepository;
     let emailService;
@@ -46,7 +46,7 @@ describe('signin service', () => {
         expect(version).toBe('v1');
 
         const encryptionKey = createHash('sha256')
-            .update('first-shell-project:signin-verification:v1\0')
+            .update('first-shell-project:signup-verification:v1\0')
             .update(tokenSecret)
             .digest();
         const decipher = createDecipheriv(
@@ -72,7 +72,7 @@ describe('signin service', () => {
             name: 'Ada Lovelace'
         };
 
-        const result = await signinService.signin(input, undefined, requestLogger);
+        const result = await signinService.signup(input, undefined, requestLogger);
 
         expect(userRepository.findByEmail).toHaveBeenCalledWith(
             'ada@example.com'
@@ -109,7 +109,7 @@ describe('signin service', () => {
         const error = new Error('SMTP delivery failed');
         emailService.sendEmail.mockRejectedValue(error);
 
-        await expect(signinService.signin({
+        await expect(signinService.signup({
             email: 'ada@example.com',
             password: 'test-password',
             name: 'Ada Lovelace'
@@ -123,7 +123,7 @@ describe('signin service', () => {
             emailService
         });
 
-        await expect(service.signin({
+        await expect(service.signup({
             email: 'ada@example.com',
             password: 'test-password',
             name: 'Ada Lovelace'
@@ -137,7 +137,7 @@ describe('signin service', () => {
     test('rejects an email that already belongs to a user', async () => {
         userRepository.findByEmail.mockResolvedValue({ id: '3f0c1d52-8a7e-4b1c-9d34-5e6f7a8b9c0d' });
 
-        const signinAttempt = signinService.signin({
+        const signinAttempt = signinService.signup({
             email: 'ada@example.com',
             password: 'test-password',
             name: 'Ada Lovelace'
@@ -158,7 +158,7 @@ describe('signin service', () => {
             emailService
         });
 
-        await expect(service.signin({
+        await expect(service.signup({
             email: 'ada@example.com',
             password: 'test-password',
             name: 'Ada Lovelace'

@@ -6,6 +6,7 @@ const messages = require('./messages');
 const passport = require('./passport');
 const coalescing = require('./coalescing');
 const validation = require('./validation');
+const rateLimitConfig = require('./rateLimit');
 
 
 module.exports = {
@@ -16,5 +17,6 @@ module.exports = {
     ...messages,
     ...passport,
     ...coalescing,
-    ...validation
+    ...validation,
+    ...rateLimitConfig
 };

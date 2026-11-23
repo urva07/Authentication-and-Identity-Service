@@ -1,7 +1,7 @@
 const { describe, test, jest: jestApi, expect } = require('@jest/globals');
-const createSigninController = require('../../../src/controllers/mainApp/v1/auth/signin.controller');
+const createSigninController = require('../../../src/controllers/mainApp/v1/auth/signup.controller');
 
-describe('signin controller', () => {
+describe('signup controller', () => {
     test('passes validated input to the service and returns success', async () => {
         const input = {
             contactType: 'email',
@@ -14,7 +14,7 @@ describe('signin controller', () => {
             message: 'A verification link has been sent to your email.'
         };
         const signinService = {
-            signin: jestApi.fn().mockResolvedValue(result)
+            signup: jestApi.fn().mockResolvedValue(result)
         };
         const controller = createSigninController(signinService);
         const res = {
@@ -28,7 +28,7 @@ describe('signin controller', () => {
 
         await controller.post({ body: input, abortSignal, log: requestLogger }, res, next);
 
-        expect(signinService.signin).toHaveBeenCalledWith(input, abortSignal, requestLogger);
+        expect(signinService.signup).toHaveBeenCalledWith(input, abortSignal, requestLogger);
         expect(res.status).toHaveBeenCalledWith(200);
         expect(res.json).toHaveBeenCalledWith(result);
         expect(next).not.toHaveBeenCalled();
@@ -37,7 +37,7 @@ describe('signin controller', () => {
     test('forwards service failures to error middleware', async () => {
         const error = new Error('database unavailable');
         const signinService = {
-            signin: jestApi.fn().mockRejectedValue(error)
+            signup: jestApi.fn().mockRejectedValue(error)
         };
         const controller = createSigninController(signinService);
         const next = jestApi.fn();

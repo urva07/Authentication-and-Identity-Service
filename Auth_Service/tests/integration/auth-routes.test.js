@@ -30,8 +30,8 @@ jestApi.mock('../../src/services', () => ({
                     email: 'ada@example.com'
                 })
             }),
-            'signin.service': () => ({
-                signin: jestApi.fn().mockResolvedValue({
+            'signup.service': () => ({
+                signup: jestApi.fn().mockResolvedValue({
                     success: true,
                     message: 'Verification email sent'
                 })
@@ -124,9 +124,9 @@ describe('Authentication routes', () => {
         });
     });
 
-    test('validates POST /v1/auth/signin credentials before its service', async () => {
+    test('validates POST /v1/auth/signup credentials before its service', async () => {
         const invalidResponse = await request(app)
-            .post('/v1/auth/signin')
+            .post('/v1/auth/signup')
             .send({});
 
         expect(invalidResponse.statusCode).toBe(400);
@@ -136,7 +136,7 @@ describe('Authentication routes', () => {
         });
 
         const validResponse = await request(app)
-            .post('/v1/auth/signin')
+            .post('/v1/auth/signup')
             .send({
                 email: 'ada@example.com',
                 password: 'secret',

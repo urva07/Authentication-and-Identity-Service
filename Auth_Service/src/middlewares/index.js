@@ -13,6 +13,6 @@ module.exports = {
     session: require('express-session'),
     json: require('express').json,
     urlencoded: require('express').urlencoded,
-    rateLimiter: require('express-rate-limit'),
+    rateLimiter: require('./rateLimiter.middleware').dynamicRateLimiter,
     requestCounterMiddleware: require("./requestCounter.middleware")
 }

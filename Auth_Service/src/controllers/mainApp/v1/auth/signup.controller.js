@@ -1,7 +1,7 @@
-const createSigninController = (signinService) => ({
+const createSigninController = (signupService) => ({
     post: async (req, res, next) => {
         try {
-            const result = await signinService.signin(
+            const result = await signupService.signup(
                 req.body,
                 req.abortSignal,
                 req.log

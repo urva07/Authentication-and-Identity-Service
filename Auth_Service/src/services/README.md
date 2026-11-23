@@ -10,7 +10,7 @@ objects, so routes look them up by key:
 
 ```js
 const { "mainApp.services": { "auth.services": services } } = require('#src/services/index.js');
-const signinService = services['signin.service']();
+const signinService = services['signup.service']();
 ```
 
 | Registry | Key | Module |
@@ -22,7 +22,7 @@ const signinService = services['signin.service']();
 | | `refresh.service` | `auth/refresh.service.js` |
 | | `logout.service` | `auth/logout.service.js` |
 | | `email.service` | `auth/email.service.js` |
-| | `signin.service` | `auth/signin.service.js` |
+| | `signup.service` | `auth/signup.service.js` |
 | | `forgot-password.service` | `auth/forgotPassword.service.js` |
 | | `change-password.service` | `auth/changePassword.service.js` |
 | | `oidc.services` → `google-callback.service` | `auth/oidc/googleCallback.service.js` |
@@ -87,8 +87,8 @@ supplied by the Google Passport strategy.
 
 ### Sign-in and email verification
 
-`signin.service.js` returns `signin({ email, password, name }, signal, logger)`
-and backs `POST /v1/auth/signin`.
+`signup.service.js` returns `signup({ email, password, name }, signal, logger)`
+and backs `POST /v1/auth/signup`.
 
 1. Looks up the normalized email and throws a `ConflictError` if the account
    already exists.
@@ -147,7 +147,7 @@ using the SMTP transport from `integrations/mailClient.js`. At least one of
 `EMAIL_PORT` defaults to `587`, and optional SMTP authentication requires both
 `EMAIL_USER` and `EMAIL_PASSWORD`. Injectable: `transporter`, `emailConfig`.
 
-Services that send mail (`signin`, `forgot-password`) create the email service
+Services that send mail (`signup`, `forgot-password`) create the email service
 on first use, or accept an `emailService` option.
 
 ## Profile service

@@ -11,7 +11,7 @@ npm test                              # all Jest tests
 npm run test:watch                    # re-run on change
 npm run test:coverage                 # coverage report in coverage/
 npx jest tests/unit/services          # a folder
-npx jest tests/unit/services/signin-service.test.js -t "conflict"
+npx jest tests/unit/services/signup-service.test.js -t "conflict"
 ```
 
 `jest.config.js` runs every `tests/**/*.test.js` file in the Node environment,
@@ -38,7 +38,7 @@ tests/
 The folders mirror `src/`: `config`, `controllers`, `errors`, `lib`,
 `middlewares`, `migrations`, `models`, `repositories`, `services` and
 `validators`. Files are named in kebab-case after the unit under test, for
-example `signin-service.test.js` or `error-middleware.test.js`.
+example `signup-service.test.js` or `error-middleware.test.js`.
 
 - **Services, controllers, middleware:** build the unit through its factory and
   inject stubs, for example

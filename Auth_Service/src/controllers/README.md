@@ -12,7 +12,7 @@ objects, so routes look them up by key and instantiate them with a service:
 
 ```js
 const { "mainApp.versions": { v1: { "auth.controllers": controllers } } } = require('#src/controllers/index.js');
-const signinController = controllers['signin.controller'](services['signin.service']());
+const signinController = controllers['signup.controller'](services['signup.service']());
 ```
 
 Routes are mounted under `/v1` (`/v1/auth`, `/v1/profile`).
@@ -24,7 +24,7 @@ Routes are mounted under `/v1` (`/v1/auth`, `/v1/profile`).
 | | `verify-email.controller` | `auth/verifyEmail.controller.js` | `get` |
 | | `refresh.controller` | `auth/refresh.controller.js` | `post` |
 | | `logout.controller` | `auth/logout.controller.js` | `post` |
-| | `signin.controller` | `auth/signin.controller.js` | `post` |
+| | `signup.controller` | `auth/signup.controller.js` | `post` |
 | | `forgot-password.controller` | `auth/forgotPassword.controller.js` | `post` |
 | | `change-password.controller` | `auth/changePassword.controller.js` | `post` |
 | | `oidc.controllers` → `google-callback.controller` | `auth/oidc/googleCallback.controller.js` | `get` |
@@ -53,7 +53,7 @@ Routes are mounted at `/v1/auth`.
 | Controller | Route | Behavior |
 | --- | --- | --- |
 | `login.controller.js` | `POST /login` | `req.user` is set by the Passport `basic` strategy and passed to `loginService.loginUser`. Sets the refresh and access cookies and returns `200 { success: true, data: { user } }`. `get`, `put`, `patch` and `delete` return `501 Not Implemented`. |
-| `signin.controller.js` | `POST /signin` | Calls `signin(req.body, req.abortSignal, req.log)` and returns `200` with the service result. The user is only created once the emailed link is opened. |
+| `signup.controller.js` | `POST /signup` | Calls `signup(req.body, req.abortSignal, req.log)` and returns `200` with the service result. The user is only created once the emailed link is opened. |
 | `verifyEmail.controller.js` | `GET /verify-email?token=` | Calls `verifyEmail(token, req.log)`. A new account sets both token cookies and returns `201`; a reused link or conflict sets no cookies and returns `200`. The body is the service's `response`. |
 | `verify.controller.js` | `POST /verify` | Behind the Passport JWT middleware (access token in the `Authorization` header). Returns an empty `200` with `x-user-id`, `x-user-email` and `x-user-name` response headers for the upstream gateway. |
 | `refresh.controller.js` | `POST /refresh` | Behind the Passport JWT middleware (refresh token cookie). Sets a new access-token cookie and returns `200 { success: true }`. |

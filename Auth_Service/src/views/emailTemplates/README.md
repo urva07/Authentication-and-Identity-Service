@@ -11,7 +11,7 @@ alternative is built next to it in the service.
 
 | Template | Used by | Variables |
 | --- | --- | --- |
-| `verifyEmail.ejs` | `signin.service.js` (`Verify your email address`) | `name`, `verificationUrl`, `tokenExpiry` |
+| `verifyEmail.ejs` | `signup.service.js` (`Verify your email address`) | `name`, `verificationUrl`, `tokenExpiry` |
 | `forgotPassword.ejs` | `forgotPassword.service.js` (`Reset your password`) | `name`, `resetUrl`, `tokenExpiry` |
 
 ```js

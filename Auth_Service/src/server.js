@@ -21,7 +21,8 @@ const {
     openSockets: { 
         destroyIdleSockets, 
         openSockets 
-    } 
+    },
+    startUpInitializations
 } = require('./lib');
 
 
@@ -55,14 +56,8 @@ const startServer = async () => {
         listeningServer.once('error', reject);
     });
 
-    connections = await initializeConnections();
-    configureMysqlRepositories(mysql.models);
-    configureRedisInstancesRepositories({
-        userCacheInstanceClient: redis.redisCacheClient,
-        sessionInstanceClient: redis.redisSessionClient
-    });
+    startUpInitializations()
 
-    
     mainServer = await new Promise((resolve, reject) => {
         const listeningServer = app.listen(PORT, () => {
             logger.info(

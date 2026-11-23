@@ -4,7 +4,7 @@ module.exports = {
     "verify.validator": require('./verify.validator'),
     "verify-email.validator": require('./verify-email.validator'),
     "refresh.validator": require('./refresh.validator'),
-    "signin.validator": require('./signin.validator'),
+    "signup.validator": require('./signup.validator'),
     "forgot-password.validator": require('./forgot-password.validator'),
     "change-password.validator": require('./change-password.validator'),
     "profile.validator": require('./profile.validator')

@@ -18,7 +18,7 @@ verification, JWT access tokens via the `Authorization` header and refresh token
 ## Features
 
 - Email/password login using a Passport `basic` (local) strategy
-- Sign-up (`signin`) with an emailed verification link
+- Sign-up (`signup`) with an emailed verification link
 - JWT access tokens (read from the `Authorization` header) and refresh tokens
   (read from an `HttpOnly` cookie), validated with Passport JWT strategies
 - Forgot-password flow with signed, short-lived reset links
@@ -169,7 +169,7 @@ any user. The header path fails closed if the secret is missing or invalid.
 | Method | Path | Description |
 |--------|------|-------------|
 | POST | `/v1/auth/login` | Body `{ email, password }`. Sets access and refresh token cookies and returns the public user profile. |
-| POST | `/v1/auth/signin` | Body `{ email, password, name }`. Creates a pending account and sends a verification email. |
+| POST | `/v1/auth/signup` | Body `{ email, password, name }`. Creates a pending account and sends a verification email. |
 | GET | `/v1/auth/verify-email?token=...` | Verifies the email address using the emailed token. `token` is required. |
 | POST | `/v1/auth/verify` | Validates the access token (`Authorization` header) and returns user details in `x-user-*` response headers. |
 | POST | `/v1/auth/refresh` | Issues a new access token. Requires the refresh-token cookie. |
@@ -323,7 +323,7 @@ shell-compatible `tests/load/.env` file and run:
 ```
 
 Sourcing a file executes its contents; do not source an untrusted file. Keep
-test credentials out of version control. Some routes, such as signin, may create
+test credentials out of version control. Some routes, such as signup, may create
 accounts or otherwise change data; use dedicated test credentials and disposable
 data. Do not run load scenarios against production or shared environments; run
 them only with authorization and while monitoring rate limits, the service, and
