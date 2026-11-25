@@ -24,7 +24,7 @@ const createMailWorker = (processor) => {
 
     connection.on('error', (error) => {
         logger.error(
-            { error: error.message },
+            { err: error },
             'Bull MQ worker Redis connection error'
         );
     });
@@ -49,7 +49,7 @@ const createMailWorker = (processor) => {
                 jobId: job?.id,
                 jobName: job?.name,
                 attemptsMade: job?.attemptsMade,
-                error: error.message
+                err: error
             },
             'Mail job failed'
         );
@@ -64,7 +64,7 @@ const createMailWorker = (processor) => {
 
     worker.on('error', (error) => {
         logger.error(
-            { error: error.message },
+            { err: error },
             'Bull MQ worker error'
         );
     });

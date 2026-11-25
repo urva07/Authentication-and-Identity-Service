@@ -17,6 +17,11 @@ const JWT_CLAIMS = Object.freeze({
     PURPOSE: 'purpose'
 });
 
+const JWT_TOKEN_SOURCE = Object.freeze([
+    'header',
+    'cookie'
+])
+
 
 module.exports = {
     AUTH_COOKIE_NAME: 'auth_token',
@@ -26,5 +31,6 @@ module.exports = {
     TOKEN_EXPIRY_MILLISECONDS: TOKEN_EXPIRY_SECONDS * 1000,
     AUTH_TOKENS,
     AUTH_COOKIE_NAMES,
-    JWT_CLAIMS
+    JWT_CLAIMS,
+    JWT_TOKEN_SOURCE
 };

@@ -35,6 +35,66 @@ describe('email service', () => {
         });
     });
 
+    test('renders a named template in synchronous mode', async () => {
+        const transporter = {
+            sendMail: jestApi.fn().mockResolvedValue({ messageId: 'template-1' })
+        };
+        const emailService = createEmailService({
+            transporter,
+            emailConfig: { ...emailConfig, deliveryMode: 'sync' }
+        });
+
+        await emailService.sendEmail({
+            to: 'user@example.com',
+            subject: 'Verify your email address',
+            template: 'verify-email',
+            templateData: {
+                name: 'Ada',
+                verificationUrl: 'https://example.com/verify/token',
+                tokenExpiry: '30 minutes'
+            }
+        });
+
+        const mail = transporter.sendMail.mock.calls[0][0];
+        expect(mail.html).toContain('Ada');
+        expect(mail.html).toContain('https://example.com/verify/token');
+    });
+
+    test('queues template metadata in asynchronous mode', async () => {
+        const mailProducer = {
+            queueName: 'mail',
+            addMailJob: jestApi.fn().mockResolvedValue({ id: 'job-1' })
+        };
+        const emailService = createEmailService({
+            deliveryMode: 'async',
+            emailConfig: { deliveryMode: 'async' },
+            mailProducer
+        });
+
+        await expect(emailService.sendEmail({
+            to: 'user@example.com',
+            subject: 'Reset your password',
+            template: 'forgot-password',
+            templateData: {
+                name: 'Ada',
+                resetUrl: 'https://example.com/reset/token',
+                tokenExpiry: '15 minutes'
+            }
+        })).resolves.toMatchObject({ queued: true, jobId: 'job-1' });
+
+        expect(mailProducer.addMailJob).toHaveBeenCalledWith({
+            name: 'forgot-password',
+            to: 'user@example.com',
+            template: 'forgot-password',
+            subject: 'Reset your password',
+            data: {
+                name: 'Ada',
+                resetUrl: 'https://example.com/reset/token',
+                tokenExpiry: '15 minutes'
+            }
+        });
+    });
+
     test('requires recipient, subject, and message content', async () => {
         const emailService = createEmailService({
             transporter: { sendMail: jestApi.fn() },

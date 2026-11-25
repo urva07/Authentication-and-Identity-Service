@@ -84,14 +84,15 @@ describe('signup service', () => {
         const email = emailService.sendEmail.mock.calls[0][0];
         expect(email).toMatchObject({
             to: 'ada@example.com',
-            subject: 'Verify your email address'
+            subject: 'Verify your email address',
+            template: 'verify-email'
         });
-        expect(email.text).toContain(
-            'https://api.example.com/v1/auth/verify-email?token='
-        );
-        expect(email.html).toContain('Verify email address');
+        expect(email.templateData).toMatchObject({
+            name: 'Ada Lovelace',
+            tokenExpiry: '10 minutes'
+        });
 
-        const verificationUrl = new URL(email.text.match(/https:\/\/\S+/)[0]);
+        const verificationUrl = new URL(email.templateData.verificationUrl);
         const tokenPayload = decryptToken(
             verificationUrl.searchParams.get('token')
         );

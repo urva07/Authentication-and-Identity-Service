@@ -36,6 +36,16 @@ const redis = {
         username: process.env.RATE_LIMIT_REDIS_USERNAME,
         password: process.env.RATE_LIMIT_REDIS_PASSWORD,
         database: Number(process.env.RATE_LIMIT_REDIS_DATABASE) || 0
+    },
+    bullMQRedis: {
+        host: process.env.BULLMQ_REDIS_HOST || 'localhost',
+        port: Number(process.env.BULLMQ_REDIS_PORT) || 6379,
+        username: process.env.BULLMQ_REDIS_USERNAME,
+        password: process.env.BULLMQ_REDIS_PASSWORD,
+        db: Number(process.env.BULLMQ_REDIS_DB) || 0,
+        tls: process.env.BULLMQ_REDIS_TLS === 'true' ? {} : undefined,
+        maxRetriesPerRequest: null,
+        enableReadyCheck: false
     }
 };
 
@@ -86,5 +96,6 @@ if (invalidConfigs.length > 0) {
     );
     process.exit(1);
 }
+
 
 module.exports = databaseConfig;

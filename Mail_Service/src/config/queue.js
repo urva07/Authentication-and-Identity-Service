@@ -1,4 +1,6 @@
 const logger = require('../utils/logger');
+const { MAIL_QUEUE_NAMES } = require('../constants');
+
 
 const parseRetention = (value, fallback) => {
     if (value === undefined) return fallback;
@@ -7,7 +9,7 @@ const parseRetention = (value, fallback) => {
 };
 
 const queueConfig = {
-    mailQueueName: process.env.MAIL_QUEUE_NAME || 'mail',
+    mailQueueName: process.env.MAIL_QUEUE_NAME || MAIL_QUEUE_NAMES.MAIL,
     defaultJobOptions: {
         attempts: process.env.MAIL_JOB_ATTEMPTS === undefined
             ? 3
@@ -66,5 +68,6 @@ if (invalidConfigs.length > 0) {
     );
     process.exit(1);
 }
+
 
 module.exports = queueConfig;

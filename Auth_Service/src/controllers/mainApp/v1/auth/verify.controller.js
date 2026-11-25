@@ -3,8 +3,8 @@ const createVerifyController = (verifyService) => ({
         try {
             const user = await verifyService.verifyUser(req.user, req.log);
             res.header('x-user-id', user.id);
-            res.header('x-user-email', user.email);
-            res.header('x-user-name', user.firstName + ' ' + user.lastName);
+            // res.header('x-user-email', user.email);
+            // res.header('x-user-name', user.firstName + ' ' + user.lastName);
             return res.status(200).send();
         } catch (error) {
             return next(error);

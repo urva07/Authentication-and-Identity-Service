@@ -1,5 +1,9 @@
 const config = require('#src/config/index.js');
-const { ExternalServiceTimeoutError } = require('#src/errors/index.js');
+const {
+    EmailValidationError,
+    ExternalServiceError,
+    ExternalServiceTimeoutError
+} = require('#src/errors/index.js');
 const createMailClient = require('#src/integrations/mailClient.js');
 const logger = require('#src/utils/logger.js');
 
@@ -13,7 +17,9 @@ const createEmailService = ({ transporter, emailConfig = config.email } = {}) =>
     }
 
     if (!emailConfig.from) {
-        throw new Error('Email configuration requires EMAIL_FROM');
+        throw new ExternalServiceError(
+            'Email configuration requires EMAIL_FROM'
+        );
     }
 
     const emailTransport = transporter || createMailClient(emailConfig);
@@ -22,55 +28,78 @@ const createEmailService = ({ transporter, emailConfig = config.email } = {}) =>
         logger.debug('Validating email request');
 
         if (typeof to !== 'string' || to.trim().length === 0) {
-            throw new TypeError('Email recipient is required');
+            throw new EmailValidationError('Email recipient is required');
         }
 
         if (typeof subject !== 'string' || subject.trim().length === 0) {
-            throw new TypeError('Email subject is required');
+            throw new EmailValidationError('Email subject is required');
         }
 
         if (
             (typeof text !== 'string' || text.length === 0) &&
             (typeof html !== 'string' || html.length === 0)
         ) {
-            throw new TypeError('Email text or HTML content is required');
+            throw new EmailValidationError(
+                'Email text or HTML content is required'
+            );
         }
-
-        const abortController = new AbortController();
-        const abortSignal = abortController.signal;
-
-        const aborted = new Promise((_, reject) => {
-            abortSignal.addEventListener('abort', () => {
-                logger.debug('Email sending aborted due to timeout');
-                reject(new ExternalServiceTimeoutError('Email sending aborted due to timeout'));
-            });
-        });
-
-        const timeoutId = setTimeout(() => {
-            abortController.abort();
-        }, emailConfig.timeout || 5000);
 
         logger.debug('Sending email');
 
-        return Promise.race([
-            emailTransport.sendMail({
-                from: emailConfig.from,
-                to: to.trim(),
-                subject,
-                ...(text ? { text } : {}),
-                ...(html ? { html } : {})
-            }),
-            aborted
-        ]).then((result) => {
+        let timeoutId;
+        const timeout = new Promise((_, reject) => {
+            timeoutId = setTimeout(() => {
+                logger.debug('Email sending aborted due to timeout');
+                reject(
+                    new ExternalServiceTimeoutError(
+                        'Email sending aborted due to timeout'
+                    )
+                );
+            }, emailConfig.timeout);
+        });
+
+        try {
+            const result = await Promise.race([
+                emailTransport.sendMail({
+                    from: emailConfig.from,
+                    to: to.trim(),
+                    subject,
+                    ...(text ? { text } : {}),
+                    ...(html ? { html } : {})
+                }),
+                timeout
+            ]);
+
             logger.debug('Email sent successfully');
             return result;
-        }).catch((error) => {
+        } catch (error) {
             logger.debug('Email sending failed', { error: error.message });
-            throw error;
-        }).finally(() => {
+
+            if (
+                error instanceof EmailValidationError ||
+                error instanceof ExternalServiceError ||
+                error instanceof ExternalServiceTimeoutError
+            ) {
+                throw error;
+            }
+
+            if (
+                error.code === 'ETIMEDOUT' ||
+                error.code === 'ESOCKET' ||
+                error.code === 'ECONNECTION'
+            ) {
+                throw new ExternalServiceTimeoutError(
+                    'Email provider request timed out'
+                );
+            }
+
+            throw new ExternalServiceError(
+                'Email provider could not send the message'
+            );
+        } finally {
             clearTimeout(timeoutId);
             logger.debug('Timeout cleared');
-        });
+        }
     };
 
     return { sendEmail };

@@ -13,13 +13,13 @@ const {
         }
     }
 } = require('#src/repositories/index.js');
-const logger = require('#src/utils/logger.js');
+const defaultLogger = require('#src/utils/logger.js');
 const { AuthenticationError } = require('#src/errors/index.js');
 const requestCoalescer = require('#src/lib/requestCoalescer.js')
 const { createCoalescingKey } = require('#src/lib/index.js');
 const { cacheAuthenticatedUser } = require('#src/lib/index.js');
-const { COALESCING, JWT_CLAIMS } = require('#src/constants/index.js');
-
+const { COALESCING, JWT_CLAIMS, JWT_TOKEN_SOURCE } = require('#src/constants/index.js');
+        
 
 const createJwtAuthenticationCallback = ({
     userRepository,
@@ -32,7 +32,8 @@ const createJwtAuthenticationCallback = ({
         method: COALESCING.MYSQL.METHODS.USER.FIND_BY_ID
     });
 
-    return async (payload, done) => {
+    return async (req, payload, done) => {
+        const logger = req.log || defaultLogger;
         try {
             logger.debug('[passport-jwt] Looking up user for JWT authentication');
 
@@ -112,18 +113,17 @@ const buildJwtStrategy = ({
         jwtFromRequest: tokenExtractor,
         secretOrKey: secret,
         algorithms: algorithms,
+        passReqToCallback: true,
     },
     userExtractor
 );
-
-const allowedFrom = ['header', 'cookie'];
 
 const createJwtStrategy = (
     tokenSecret,
     from, 
     cookieName
 ) => {
-    if (!allowedFrom.includes(from)) {
+    if (!JWT_TOKEN_SOURCE.includes(from)) {
         throw new TypeError("from argument must be either 'header' or 'cookie'");
     }
     from = from.toLowerCase();
@@ -144,6 +144,7 @@ const createJwtStrategy = (
                         if (req && req.cookies) {
                             token = req.cookies[cookieName];
                         }
+                        const logger = req?.log || defaultLogger;
                         logger.debug(`JWT cookie token ${token ? 'found' : 'not found'}`);
                         return token;
                     }

@@ -35,14 +35,15 @@ const setup = ({ user = null, passwordValid = false, lookupError = null } = {}) 
     mockVerifyPassword.mockReset();
     mockVerifyPassword.mockResolvedValue(passwordValid);
 
+    const request = { log: { debug: jestApi.fn() } };
     const run = (email = 'ada@example.com', password = 'test-password') =>
         new Promise((resolve) => {
-            verify(email, password, (error, authenticatedUser) => {
+            verify(request, email, password, (error, authenticatedUser) => {
                 resolve({ error, authenticatedUser });
             });
         });
 
-    return { run, userRepository };
+    return { run, request, userRepository };
 };
 
 describe('basic Passport authentication callback', () => {
@@ -108,6 +109,16 @@ describe('basic Passport authentication callback', () => {
         expect(mockVerifyPassword).toHaveBeenCalledWith(
             'test-password',
             'stored-password-hash'
+        );
+    });
+
+    test('uses the request-scoped logger', async () => {
+        const { run, request } = setup();
+
+        await run();
+
+        expect(request.log.debug).toHaveBeenCalledWith(
+            'Basic authentication attempt started'
         );
     });
 

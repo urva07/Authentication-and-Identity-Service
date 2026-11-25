@@ -1,5 +1,3 @@
-const path = require('node:path');
-const ejs = require('ejs');
 const config = require('#src/config/config/index.js');
 const { ConflictError } = require('#src/errors/index.js');
 const { mysql: { getUserRepository } } = require('#src/repositories/index.js');
@@ -16,7 +14,8 @@ const {
     EMAIL_SUBJECTS,
     AUTH_MESSAGES,
     COALESCING,
-    JWT_CLAIMS
+    JWT_CLAIMS,
+    EMAIL_TEMPLATES
 } = require('#src/constants/index.js');
 
 const createSigninService = ({
@@ -98,28 +97,17 @@ const createSigninService = ({
         );
 
         const verificationUrl = createVerificationUrl(verificationToken);
-        const html = await ejs.renderFile(
-            path.join(process.cwd(), 'src/views/emailTemplates/verifyEmail.ejs'),
-            { 
-                name, 
-                verificationUrl, 
-                tokenExpiry: `${tokenTtlSeconds / 60} minutes` 
-            }
-        );
         
         await getEmailService().sendEmail(
             {
                 to: normalizedEmail,
                 subject: EMAIL_SUBJECTS.VERIFY_EMAIL,
-                text: [
-                    `Hello ${name},`,
-                    '',
-                    'Verify your email address by opening this link:',
+                template: EMAIL_TEMPLATES.VERIFY_EMAIL,
+                templateData: {
+                    name,
                     verificationUrl,
-                    '',
-                    `This link expires in ${tokenTtlSeconds / 60} minutes. If you did not request this, you can ignore this email.`
-                ].join('\n'),
-                html
+                    tokenExpiry: `${tokenTtlSeconds / 60} minutes`
+                }
             }, 
             signal,
             logger

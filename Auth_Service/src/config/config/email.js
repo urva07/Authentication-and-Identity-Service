@@ -1,6 +1,13 @@
 const logger = require('#src/utils/logger.js');
+const {
+    EMAIL_DELIVERY_MODES
+} = require('#src/constants/index.js');
 
 const emailConfig = {
+    deliveryMode: (
+        process.env.EMAIL_DELIVERY_MODE ||
+        EMAIL_DELIVERY_MODES.SYNC
+    ).trim().toLowerCase(),
     host: process.env.EMAIL_HOST,
     port: Number(process.env.EMAIL_PORT) || 587,
     secure: process.env.EMAIL_SECURE === 'true',
@@ -14,22 +21,32 @@ const isMissing = (value) =>
 
 const invalidConfigs = [];
 
-if (isMissing(emailConfig.host)) {
+if (!Object.values(EMAIL_DELIVERY_MODES).includes(emailConfig.deliveryMode)) {
+    invalidConfigs.push('EMAIL_DELIVERY_MODE');
+}
+
+if (emailConfig.deliveryMode === EMAIL_DELIVERY_MODES.SYNC && isMissing(emailConfig.host)) {
     invalidConfigs.push('EMAIL_HOST');
 }
 if (
-    !Number.isInteger(emailConfig.port) ||
-    emailConfig.port < 1 ||
-    emailConfig.port > 65535
+    emailConfig.deliveryMode === EMAIL_DELIVERY_MODES.SYNC &&
+    (
+        !Number.isInteger(emailConfig.port) ||
+        emailConfig.port < 1 ||
+        emailConfig.port > 65535
+    )
 ) {
     invalidConfigs.push('EMAIL_PORT');
 }
-if (isMissing(emailConfig.from)) {
+if (emailConfig.deliveryMode === EMAIL_DELIVERY_MODES.SYNC && isMissing(emailConfig.from)) {
     invalidConfigs.push('EMAIL_FROM');
 }
 if (
-    (isMissing(emailConfig.user) && !isMissing(emailConfig.password)) ||
-    (!isMissing(emailConfig.user) && isMissing(emailConfig.password))
+    emailConfig.deliveryMode === EMAIL_DELIVERY_MODES.SYNC &&
+    (
+        (isMissing(emailConfig.user) && !isMissing(emailConfig.password)) ||
+        (!isMissing(emailConfig.user) && isMissing(emailConfig.password))
+    )
 ) {
     invalidConfigs.push('EMAIL_USER/EMAIL_PASSWORD');
 }

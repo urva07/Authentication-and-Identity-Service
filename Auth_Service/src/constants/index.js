@@ -7,6 +7,7 @@ const passport = require('./passport');
 const coalescing = require('./coalescing');
 const validation = require('./validation');
 const rateLimitConfig = require('./rateLimit');
+const email = require('./email');
 
 
 module.exports = {
@@ -18,5 +19,6 @@ module.exports = {
     ...passport,
     ...coalescing,
     ...validation,
-    ...rateLimitConfig
+    ...rateLimitConfig,
+    ...email
 };

@@ -51,11 +51,14 @@ describe('forgot password', () => {
         expect(emailService.sendEmail.mock.calls[0][2]).toBe(requestLogger);
         expect(result.success).toBe(true);
         const message = emailService.sendEmail.mock.calls[0][0];
-        expect(message).toMatchObject({ to: 'ada@example.com', subject: 'Reset your password' });
-        expect(message.html).toContain('Reset your password');
-        expect(message.html).toContain('15 minutes');
+        expect(message).toMatchObject({
+            to: 'ada@example.com',
+            subject: 'Reset your password',
+            template: 'forgot-password'
+        });
+        expect(message.templateData).toMatchObject({ tokenExpiry: '15 minutes' });
 
-        const url = new URL(message.text.match(/https:\/\/\S+/)[0]);
+        const url = new URL(message.templateData.resetUrl);
         expect(url.origin + url.pathname).toBe('https://api.example.com/v1/auth/change-password');
         const payload = jwt.verify(url.searchParams.get('token'), secret);
         expect(payload).toMatchObject({
@@ -101,7 +104,7 @@ describe('forgot password', () => {
             .resolves.toMatchObject({ success: true });
 
         const message = emailService.sendEmail.mock.calls[0][0];
-        const url = new URL(message.text.match(/https:\/\/\S+/)[0]);
+        const url = new URL(message.templateData.resetUrl);
         expect(jwt.verify(url.searchParams.get('token'), 'short')).toMatchObject({
             sub: 'user-1',
             email: 'ada@example.com',

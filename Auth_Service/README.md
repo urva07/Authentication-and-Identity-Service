@@ -1,14 +1,3 @@
-# Copyright and Usage Restrictions
-
-© 2026 Urva Patel. All Rights Reserved.
-
-This repository is publicly accessible solely for viewing and evaluation.
-
-Without prior written permission from the copyright owner, you may not copy or download this repository for reuse, modify or redistribute it, exploit it commercially, or incorporate it into another project.
-
-No license is granted to use, modify, or distribute this software.
-
-
 # Authentication and identity service
 
 An Express.js based authentication and identity service providing email/password sign-in, email

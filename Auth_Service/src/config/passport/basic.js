@@ -2,7 +2,7 @@ const LocalStrategy = require('passport-local').Strategy;
 const { mysql: { getUserRepository } } = require('#src/repositories/index.js');
 const { verifyPassword } = require('#src/utils/hashPasswordAndVerify.js');
 const { AuthenticationError } = require('#src/errors/index.js');
-const logger = require('#src/utils/logger.js');
+const defaultLogger = require('#src/utils/logger.js');
 const requestCoalescer = require('#src/lib/requestCoalescer.js')
 const { createCoalescingKey } = require('#src/lib/index.js');
 const { COALESCING } = require('#src/constants/index.js');
@@ -18,7 +18,8 @@ const createBasicAuthenticationCallback = ({
         method: COALESCING.MYSQL.METHODS.USER.FIND_BY_EMAIL_WITH_PASSWORD
     });
 
-    return async (email, password, done) => {
+    return async (req, email, password, done) => {
+        const logger = req.log || defaultLogger;
         logger.debug('Basic authentication attempt started');
         try {
             userRepository =  userRepository || getUserRepository();
@@ -57,7 +58,8 @@ const createBasicAuthenticationCallback = ({
 const basicStrategy = new LocalStrategy(
     {
         usernameField: 'email',
-        passwordField: 'password'
+        passwordField: 'password',
+        passReqToCallback: true
     },
     createBasicAuthenticationCallback()
 );

@@ -64,9 +64,10 @@ const setup = ({
         userExistenceRepository,
         userLockRepository
     });
+    const request = { log: { debug: jestApi.fn(), error: jestApi.fn() } };
 
     const run = (payload) => new Promise((resolve, reject) => {
-        verify(payload, (error, user) => {
+        verify(request, payload, (error, user) => {
             if (error) {
                 reject(error);
                 return;
@@ -79,6 +80,7 @@ const setup = ({
         userRepository,
         userExistenceRepository,
         userLockRepository,
+        request,
         run
     };
 };
@@ -125,7 +127,21 @@ describe('JWT authentication callback', () => {
         expect(mockCacheAuthenticatedUser).toHaveBeenCalledWith(
             { userExistenceRepository, userLockRepository },
             'user-id',
-            expect.anything()
+            expect.objectContaining({
+                debug: expect.any(Function),
+                error: expect.any(Function)
+            })
+        );
+    });
+
+    test('uses the request-scoped logger', async () => {
+        const { run, request } = setup();
+
+        await expect(run({ sub: 'missing-user' })).rejects.toMatchObject({
+            name: 'AuthenticationError'
+        });
+        expect(request.log.debug).toHaveBeenCalledWith(
+            '[passport-jwt] Looking up user for JWT authentication'
         );
     });
 
@@ -189,8 +205,9 @@ describe('JWT authentication callback', () => {
             userExistenceRepository,
             userLockRepository
         });
+        const request = { log: { debug: jestApi.fn(), error: jestApi.fn() } };
         const run = (payload) => new Promise((resolve, reject) => {
-            verify(payload, (error, user) => {
+            verify(request, payload, (error, user) => {
                 if (error) {
                     reject(error);
                     return;

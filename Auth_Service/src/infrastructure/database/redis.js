@@ -1,4 +1,5 @@
 const { createClient } = require('redis');
+const IORedis = require('ioredis');
 const logger = require('#src/utils/logger.js');
 const config = require('#src/config/config/index.js');
 
@@ -27,14 +28,28 @@ const {
     database: rateLimitDatabase 
 } = config.database.redis.rateLimitRedis;
 
+const { 
+    host: bullMQHost,
+    port: bullMQPort,
+    username: bullMQUsername,
+    password: bullMQPassword,
+    db: bullMQDb,
+    tls: bullMQTls,
+    maxRetriesPerRequest: bullMQMaxRetriesPerRequest,
+    enableReadyCheck: bullMQEnableReadyCheck
+} = config.database.redis.bullMQRedis;
+
 if (!sessionHost || !sessionPort) {
-    throw new Error('Redis session configuration is incomplete. Set REDIS_HOST and REDIS_PORT for session.');
+    throw new Error('Redis session configuration is incomplete. Set REDIS_HOST and REDIS_PORT for session Redis.');
 }
 if (!cacheHost || !cachePort) {
-    throw new Error('Redis cache configuration is incomplete. Set REDIS_HOST and REDIS_PORT for cache.');
+    throw new Error('Redis cache configuration is incomplete. Set REDIS_HOST and REDIS_PORT for cache Redis.');
 }
 if (!rateLimitHost || !rateLimitPort) {
-    throw new Error('Redis rate limiter configuration is incomplete. Set REDIS_HOST and REDIS_PORT for rate limiter.');
+    throw new Error('Redis rate limiter configuration is incomplete. Set REDIS_HOST and REDIS_PORT for rate limiter Redis.');
+}
+if (!bullMQHost || !bullMQPort) {
+    throw new Error('Redis bullMQ configuration is incomplete. Set REDIS_HOST and REDIS_PORT for bullMQ Redis.');
 }
 
 const reconnectStrategy = (retries, cause) => {
@@ -78,6 +93,30 @@ redisRateLimiterClient.on('error', (error) => {
     logger.error({ err: error }, 'Redis rate limiter client error');
 });
 
+const createRedisBullMQClient = () => new IORedis({
+    host: bullMQHost,
+    port: bullMQPort,
+    username: bullMQUsername,
+    password: bullMQPassword,
+    db: bullMQDb,
+    tls: bullMQTls,
+    maxRetriesPerRequest: bullMQMaxRetriesPerRequest,
+    enableReadyCheck: bullMQEnableReadyCheck
+});
+
+const redisBullMQClient = createRedisBullMQClient();
+
+redisBullMQClient.on('ready', () => {
+    logger.info('Bull MQ Redis connection ready');
+});
+
+redisBullMQClient.on('error', (error) => {
+    logger.error(
+        { err: error },
+        'Bull MQ Redis connection error'
+    );
+});
+
 const connectRedis = async () => {
     await redisSessionClient.connect();
     logger.info('Redis session client connected');
@@ -88,6 +127,9 @@ const connectRedis = async () => {
     await redisRateLimiterClient.connect();
     logger.info('Redis rate limiter client connected');
 
+    await redisBullMQClient.ping();
+    logger.info('Redis bullMQ client connected');
+
     logger.info('All Redis clients connected');
 };
 
@@ -97,6 +139,7 @@ module.exports = {
     redisClients: {
         redisSessionClient,
         redisCacheClient,
-        redisRateLimiterClient
+        redisRateLimiterClient,
+        redisBullMQClient
     }
 };

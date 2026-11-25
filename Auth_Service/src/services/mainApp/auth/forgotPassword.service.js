@@ -1,5 +1,3 @@
-const path = require('node:path');
-const ejs = require('ejs');
 const config = require('#src/config/config/index.js');
 const { 
     mysql: { 
@@ -14,7 +12,8 @@ const {
     PASSWORD_RESET_PURPOSE,
     EMAIL_SUBJECTS,
     AUTH_MESSAGES,
-    COALESCING
+    COALESCING,
+    EMAIL_TEMPLATES
 } = require('#src/constants/index.js');
 const defaultLogger = require('#src/utils/logger.js');
 const requestCoalescer = require('#src/lib/requestCoalescer.js')
@@ -113,10 +112,6 @@ const createForgotPasswordService = ({
         });
         const resetUrl = createResetUrl(token);
         const name = user.firstName || 'there';
-        const html = await ejs.renderFile(
-            path.join(process.cwd(), 'src/views/emailTemplates/forgotPassword.ejs'),
-            { name, resetUrl, tokenExpiry }
-        );
 
         await activeTokenRepository.create({
             tokenType: PASSWORD_RESET_PURPOSE,
@@ -129,15 +124,12 @@ const createForgotPasswordService = ({
             {
                 to: user.email,
                 subject: EMAIL_SUBJECTS.RESET_PASSWORD,
-                text: [
-                    `Hello ${name},`,
-                    '',
-                    'Reset your password by opening this link:',
+                template: EMAIL_TEMPLATES.FORGOT_PASSWORD,
+                templateData: {
+                    name,
                     resetUrl,
-                    '',
-                    `This link expires in ${tokenExpiry}. If you did not request this, you can ignore this email.`
-                ].join('\n'),
-                html
+                    tokenExpiry
+                }
             },
             signal,
             logger

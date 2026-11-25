@@ -1,5 +1,6 @@
 const logger = require('../utils/logger');
 
+
 const emailConfig = {
     host: process.env.EMAIL_HOST,
     port: process.env.EMAIL_PORT === undefined ? 587 : Number(process.env.EMAIL_PORT),
@@ -8,7 +9,7 @@ const emailConfig = {
     password: process.env.EMAIL_PASSWORD,
     from: process.env.EMAIL_FROM,
     timeout: process.env.EMAIL_TIMEOUT_MS === undefined
-        ? 5000
+        ? 12000
         : Number(process.env.EMAIL_TIMEOUT_MS)
 };
 
@@ -43,5 +44,6 @@ if (invalidConfigs.length > 0) {
     );
     process.exit(1);
 }
+
 
 module.exports = emailConfig;
