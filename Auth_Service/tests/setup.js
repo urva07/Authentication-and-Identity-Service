@@ -23,3 +23,5 @@ process.env.OIDC_GOOGLE_CALLBACK_URL ||= 'http://localhost:3000/callback';
 process.env.EMAIL_HOST ||= 'smtp.example.com';
 process.env.EMAIL_PORT ||= '587';
 process.env.EMAIL_FROM ||= 'test@example.com';
+process.env.EMAIL_DELIVERY_MODE = 'sync';
+process.env.BULLMQ_REDIS_HOST ||= '127.0.0.1';

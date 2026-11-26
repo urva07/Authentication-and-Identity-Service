@@ -48,7 +48,7 @@ describe('password reset flow', () => {
 
             await forgot.forgotPassword({ email: user.email });
             const message = emailService.sendEmail.mock.calls[0][0];
-            const token = new URL(message.text.match(/https:\/\/\S+/)[0]).searchParams.get('token');
+            const token = new URL(message.templateData.resetUrl).searchParams.get('token');
             const input = { token, newPassword: 'new-password' };
 
             await expect(change.changePassword(input)).resolves.toMatchObject({ success: true });
