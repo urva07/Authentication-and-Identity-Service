@@ -11,24 +11,6 @@ services:
     volumes:
       - ./Auth_Service:/app
       - /app/node_modules
-    # environment:
-    #   environment: development
-    #   PORT: 3000
-    #   HEALTH_APP_PORT: 3001
-    #   MYSQL_HOST: mysql
-    #   MYSQL_PORT: 3306
-    #   SESSION_REDIS_HOST: redis_session
-    #   SESSION_REDIS_PORT: 6379
-    #   SESSION_REDIS_USERNAME: ${REDIS_USERNAME:-app}
-    #   SESSION_REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}
-    #   USER_CACHE_REDIS_HOST: redis_user_cache
-    #   USER_CACHE_REDIS_PORT: 6379
-    #   USER_CACHE_REDIS_USERNAME: ${REDIS_USERNAME:-app}
-    #   USER_CACHE_REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}
-    #   RATE_LIMIT_REDIS_HOST: redis_rate_limit
-    #   RATE_LIMIT_REDIS_PORT: 6379
-    #   RATE_LIMIT_REDIS_USERNAME: ${REDIS_USERNAME:-app}
-    #   RATE_LIMIT_REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}
     ports:
       - "3000:3000"
       - "3001:3001"
@@ -69,6 +51,9 @@ services:
     volumes:
       - ./Mail_Service:/app
       - /app/node_modules
+    depends_on:
+      redis_bullMQ:
+        condition: service_healthy
     environment:
       environment: development
       PORT: 3002
