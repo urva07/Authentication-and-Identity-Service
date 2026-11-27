@@ -12,7 +12,13 @@ const mysql = {
     password: process.env.MYSQL_PASSWORD,
     host: process.env.MYSQL_HOST,
     port: Number(process.env.MYSQL_PORT) || 3306,
-    database: process.env.MYSQL_DATABASE
+    database: process.env.MYSQL_DATABASE,
+    pool: {
+        max: Number(process.env.MYSQL_POOL_MAX) || 10,
+        min: Number(process.env.MYSQL_POOL_MIN) || 2,
+        acquire: Number(process.env.MYSQL_POOL_ACQUIRE) || 30000,
+        idle: Number(process.env.MYSQL_POOL_IDLE) || 10000
+    }
 };
 
 const redis = {
@@ -21,14 +27,16 @@ const redis = {
         port: Number(process.env.SESSION_REDIS_PORT) || 6379,
         username: process.env.SESSION_REDIS_USERNAME,
         password: process.env.SESSION_REDIS_PASSWORD,
-        database: Number(process.env.SESSION_REDIS_DATABASE) || 0
+        database: Number(process.env.SESSION_REDIS_DATABASE) || 0,
+        ttlJitter: Number(process.env.SESSION_REDIS_TTL_JITTER) || 10
     },
     userCacheRedis: {
         host: process.env.USER_CACHE_REDIS_HOST,
         port: Number(process.env.USER_CACHE_REDIS_PORT) || 6379,
         username: process.env.USER_CACHE_REDIS_USERNAME,
         password: process.env.USER_CACHE_REDIS_PASSWORD,
-        database: Number(process.env.USER_CACHE_REDIS_DATABASE) || 0
+        database: Number(process.env.USER_CACHE_REDIS_DATABASE) || 0,
+        ttlJitter: Number(process.env.USER_CACHE_REDIS_TTL_JITTER) || 10
     },
     rateLimitRedis: {
         host: process.env.RATE_LIMIT_REDIS_HOST,

@@ -3,7 +3,20 @@ const initializeModels = require('#src/models/index.js');
 const logger = require('#src/utils/logger.js');
 const config = require('#src/config/config/index.js');
 
-const { username, password, host, port, database } = config.database.mysql;
+
+const { 
+    username, 
+    password, 
+    host, 
+    port, 
+    database, 
+    pool: {
+        max,
+        min, 
+        acquire,
+        idle
+    } 
+} = config.database.mysql;
 
 if (!username || password === undefined || !host || !database) {
     throw new Error(
@@ -16,10 +29,10 @@ const sequelize = new Sequelize(database, username, password, {
     port,
     dialect: 'mysql',
     pool: {
-        max: 10,
-        min: 0,
-        acquire: 30000,
-        idle: 10000
+        max,
+        min,
+        acquire,
+        idle
     },
     define: {
         timestamps: true,
@@ -34,6 +47,7 @@ const connectMySQL = async () => {
 
     logger.info('MySQL connected');
 };
+
 
 module.exports = { 
     connectMySQL,

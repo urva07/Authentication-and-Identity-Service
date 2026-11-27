@@ -1,3 +1,4 @@
+const configureServer = require('./configureServer.js');
 const startUpInitializations = require('./startUpInitializations.js');
 
 module.exports = {
@@ -6,5 +7,7 @@ module.exports = {
     createCoalescingKey: require('./createCoalescingKey.js'),
     retryWithExponentialBackoff: require('./retryWithExponentialBackoff.js'),
     cacheAuthenticatedUser: require('./cacheAuthenticatedUser.js'),
-    startUpInitializations: require('./startupInitializations.js')
+    startUpInitializations: require('./startupInitializations.js'),
+    newSocketsAndItsInflightReqs: require('./newSocketsAndItsInflightReqs.js'),
+    configureServer: require('./configureServer.js')
 };

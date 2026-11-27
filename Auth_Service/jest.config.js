@@ -1,6 +1,6 @@
 module.exports = {
     testEnvironment: 'node',
-    maxWorkers: 2,
+    maxWorkers: 5,
 
     setupFilesAfterEnv: [
         '<rootDir>/tests/setup.js'

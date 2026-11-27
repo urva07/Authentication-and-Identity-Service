@@ -25,3 +25,48 @@ process.env.EMAIL_PORT ||= '587';
 process.env.EMAIL_FROM ||= 'test@example.com';
 process.env.EMAIL_DELIVERY_MODE = 'sync';
 process.env.BULLMQ_REDIS_HOST ||= '127.0.0.1';
+
+jest.mock('../src/infrastructure/messaging/bullMQ', () => ({
+    addMailJob: jest.fn().mockResolvedValue({ id: 'test-mail-job' }),
+    queueName: 'mail',
+    closeMailQueue: jest.fn().mockResolvedValue(undefined)
+}));
+
+jest.mock('ioredis', () => {
+    const { EventEmitter } = require('node:events');
+
+    class RedisMock extends EventEmitter {
+        constructor() {
+            super();
+            this.status = 'ready';
+        }
+
+        connect() {
+            return Promise.resolve('OK');
+        }
+
+        quit() {
+            this.status = 'end';
+            return Promise.resolve('OK');
+        }
+    }
+
+    return RedisMock;
+});
+
+jest.mock('bullmq', () => ({
+    Queue: class QueueMock {
+        constructor(name) {
+            this.name = name;
+        }
+
+        add() {
+            return Promise.resolve({ id: 'test-mail-job' });
+        }
+
+        close() {
+            return Promise.resolve();
+        }
+    },
+    Worker: class WorkerMock {}
+}));

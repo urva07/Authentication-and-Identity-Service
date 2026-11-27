@@ -8,9 +8,10 @@ const {
     } 
 } = require('#src/infrastructure/database/index.js');
 const { RedisStore } = require('rate-limit-redis');
+const defaultLogger = require('#src/utils/logger.js');
 
 
-const getIpKey = (req) => ipKeyGenerator(req.ip);
+const getIpKey = (req) => `${req.path}:${ipKeyGenerator(req.ip)}`;
 
 const keyGenerators = {
     [keyGeneratorsKeys.IP]: getIpKey,
@@ -43,13 +44,14 @@ const createDerivedLimiter = () => {
 }
 
 const dynamicRateLimiter = (req, res, next) => {
+    const logger = req.log || defaultLogger
     const version = req.path.split('/')[1];
     const limiter = derivedLimiters[version]?.[req.path];
     if (limiter) {
-        req.log.debug(`Derived Rate limiter hit for: ${req.method} ${req.originalUrl || req.path}`);
+        logger.debug(`Derived Rate limiter hit for: ${req.method} ${req.originalUrl || req.path}`);
         return limiter(req, res, next);
     }
-    req.log.debug(`No Derived Rate limiter hit for: ${req.method} ${req.originalUrl || req.path}`);
+    logger.warn(`No Derived Rate limiter hit for: ${req.method} ${req.originalUrl || req.path}`);
     next();
 }
 

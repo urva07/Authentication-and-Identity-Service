@@ -2,6 +2,7 @@ const { ExternalServiceTimeoutError } = require('../errors');
 const config = require('../config/config');
 let logger = require('#src/utils/logger.js');
 
+
 const abortSignalMiddleware = (req, res, next) => {
     logger = req.log || logger;
     const controller = new AbortController();
@@ -51,5 +52,6 @@ const abortSignalMiddleware = (req, res, next) => {
 
     next();
 };
+
 
 module.exports = abortSignalMiddleware;

@@ -1,5 +1,8 @@
 const getKey = (userId) => `userExistence:${userId}`;
 const { REDIS_CONSTANTS } = require('#src/constants/index.js');
+const config = require('#src/config/config/index.js');
+const getJitteredTtl  = require('#src/utils/getJitteredTtl.js')
+
 
 const createUserExistenceRepository = (redis) => ({
     getById: async (userId) => {
@@ -9,7 +12,7 @@ const createUserExistenceRepository = (redis) => ({
     setById: async (
         userId,
         value = 1,
-        ttl = REDIS_CONSTANTS.USER_CACHE_TTL_SECONDS
+        ttl = getJitteredTtl(REDIS_CONSTANTS.USER_CACHE_TTL_SECONDS, config.database.redis.userCacheRedis.ttlJitter)
     ) => {
         await redis.set(
             getKey(userId),

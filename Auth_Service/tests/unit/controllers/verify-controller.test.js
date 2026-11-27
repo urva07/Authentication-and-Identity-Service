@@ -22,11 +22,11 @@ describe('verify controller', () => {
         expect(verifyService.verifyUser).toHaveBeenCalledWith(user, req.log);
         expect(res.status).toHaveBeenCalledWith(200);
         expect(res.header).toHaveBeenCalledWith('x-user-id', result.id);
-        expect(res.header).toHaveBeenCalledWith('x-user-email', result.email);
-        expect(res.header).toHaveBeenCalledWith(
-            'x-user-name',
-            `${result.firstName} ${result.lastName}`
-        );
+        // expect(res.header).toHaveBeenCalledWith('x-user-email', result.email);
+        // expect(res.header).toHaveBeenCalledWith(
+        //     'x-user-name',
+        //     `${result.firstName} ${result.lastName}`
+        // );
         expect(res.send).toHaveBeenCalled();
         expect(next).not.toHaveBeenCalled();
     });

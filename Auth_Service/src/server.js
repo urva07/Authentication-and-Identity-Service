@@ -7,7 +7,12 @@ const {
         destroyIdleSockets, 
         openSockets 
     },
-    startUpInitializations
+    startUpInitializations,
+    newSocketsAndItsInflightReqs: {
+        logNewSocketAndRegisterInflightReqs,
+        registerNewInflightReqToSocket
+    },
+    configureServer
 } = require('./lib');
 
 
@@ -59,45 +64,11 @@ const startServer = async () => {
         listeningServer.once('error', reject);
     });
 
-    mainServer.setTimeout(config.apps.mainApp.connectionInactivityTimeoutMs);
-    mainServer.keepAliveTimeout = config.apps.mainApp.connectionKeepAliveTimeoutMs;
-    mainServer.headersTimeout = config.apps.mainApp.reqHeadersTimeoutMs;
-    mainServer.requestTimeout = config.apps.mainApp.reqTimeoutMs;
-    mainServer.maxConnections = config.apps.mainApp.maxConnections;
+    configureServer(mainServer)
 
-    mainServer.on('connection', (socket) => {
-        logger.info(
-            'New connection from ' +
-                socket.remoteAddress +
-                ':' +
-                socket.remotePort
-        );
+    mainServer.on('connection', logNewSocketAndRegisterInflightReqs);
 
-        socket.inflightRequests = 0;
-        openSockets.add(socket);
-        socket.once('close', () => {
-            logger.info(
-                'Connection closed from ' +
-                    socket.remoteAddress +
-                    ':' +
-                    socket.remotePort
-            );
-            openSockets.delete(socket);
-        });
-    });
-
-    mainServer.on('request', (req, res) => {
-        const socket = req.socket;
-        socket.inflightRequests += 1;
-
-        res.once('close', () => {
-            socket.inflightRequests -= 1;
-
-            if (shuttingDown && socket.inflightRequests === 0) {
-                socket.destroy();
-            }
-        });
-    });
+    mainServer.on('request', registerNewInflightReqToSocket);
 
     healthApp.locals.startupComplete = true;
 };
